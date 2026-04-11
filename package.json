@@ -7,7 +7,7 @@
     "build": "turbo run build",
     "build:py": "uv build",
     "dev": "turbo run dev",
-    "test": "turbo run test && uv run pytest",
+    "test": "turbo run test && uv sync --all-packages && uv run pytest",
     "test:ts": "turbo run test",
     "test:py": "uv run pytest",
     "lint": "turbo run lint && uv run ruff check .",

@@ -9,6 +9,7 @@ from rag_forge_core.generation.mock_generator import MockGenerator
 from rag_forge_core.ingestion.pipeline import IngestionPipeline
 from rag_forge_core.parsing.directory import DirectoryParser
 from rag_forge_core.query.engine import QueryEngine, QueryResult
+from rag_forge_core.retrieval.dense import DenseRetriever
 from rag_forge_core.storage.qdrant import QdrantStore
 
 
@@ -48,12 +49,8 @@ class TestQueryEngine:
 
     def test_query_returns_result(self, tmp_path: Path) -> None:
         embedder, store = self._index_docs(tmp_path)
-        engine = QueryEngine(
-            embedder=embedder,
-            store=store,
-            generator=MockGenerator(),
-            collection_name="test-query",
-        )
+        retriever = DenseRetriever(embedder=embedder, store=store, collection_name="test-query")
+        engine = QueryEngine(retriever=retriever, generator=MockGenerator())
         result = engine.query("What is Python?")
         assert isinstance(result, QueryResult)
         assert len(result.answer) > 0
@@ -62,24 +59,15 @@ class TestQueryEngine:
 
     def test_query_includes_sources(self, tmp_path: Path) -> None:
         embedder, store = self._index_docs(tmp_path)
-        engine = QueryEngine(
-            embedder=embedder,
-            store=store,
-            generator=MockGenerator(),
-            collection_name="test-query",
-        )
+        retriever = DenseRetriever(embedder=embedder, store=store, collection_name="test-query")
+        engine = QueryEngine(retriever=retriever, generator=MockGenerator())
         result = engine.query("What is Python?")
         assert all(hasattr(s, "text") for s in result.sources)
 
     def test_query_respects_top_k(self, tmp_path: Path) -> None:
         embedder, store = self._index_docs(tmp_path)
-        engine = QueryEngine(
-            embedder=embedder,
-            store=store,
-            generator=MockGenerator(),
-            collection_name="test-query",
-            top_k=1,
-        )
+        retriever = DenseRetriever(embedder=embedder, store=store, collection_name="test-query")
+        engine = QueryEngine(retriever=retriever, generator=MockGenerator(), top_k=1)
         result = engine.query("What is Python?")
         assert result.chunks_retrieved <= 1
 
@@ -87,11 +75,7 @@ class TestQueryEngine:
         embedder = MockEmbedder()
         store = QdrantStore()
         store.create_collection("empty", dimension=embedder.dimension())
-        engine = QueryEngine(
-            embedder=embedder,
-            store=store,
-            generator=MockGenerator(),
-            collection_name="empty",
-        )
+        retriever = DenseRetriever(embedder=embedder, store=store, collection_name="empty")
+        engine = QueryEngine(retriever=retriever, generator=MockGenerator())
         result = engine.query("anything")
         assert result.chunks_retrieved == 0

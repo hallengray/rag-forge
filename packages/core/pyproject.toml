@@ -13,10 +13,12 @@ dependencies = [
     "lxml>=5.0",
     "openai>=1.30",
     "qdrant-client>=1.9",
+    "bm25s>=0.2",
 ]
 
 [project.optional-dependencies]
 local = ["sentence-transformers>=3.0"]
+cohere = ["cohere>=5.0"]
 
 [build-system]
 requires = ["hatchling"]

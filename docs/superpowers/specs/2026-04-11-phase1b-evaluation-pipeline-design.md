@@ -8,7 +8,7 @@ The Phase 1 exit criteria requires: `rag-forge audit --golden-set qa.json` produ
 
 ## Scope
 
-**In scope:** JSONL telemetry loader, golden set loader, LLM-as-Judge evaluation engine (Claude + GPT-4o), three metrics (faithfulness, context relevance, answer relevance), RMM scoring logic, audit orchestrator, HTML report generator, CLI `audit` command wiring, Python CLI `audit` subcommand.
+**In scope:** JSONL telemetry loader, golden set loader, LLM-as-Judge evaluation engine (Claude + GPT-4o), four metrics (faithfulness, context relevance, answer relevance, hallucination rate), RMM scoring logic, audit orchestrator, HTML report generator, CLI `audit` command wiring, Python CLI `audit` subcommand.
 
 **Out of scope:** RAGAS integration, DeepEval integration, PDF report export (Playwright), radar charts, trend arrows, cost analysis. These are Phase 2/3 features.
 
@@ -105,7 +105,7 @@ class MetricEvaluator(Protocol):
     def default_threshold(self) -> float: ...
 ```
 
-**Three implementations:**
+**Four implementations:**
 
 #### FaithfulnessMetric
 - **What it measures:** Is the response grounded in the retrieved contexts?
@@ -125,6 +125,12 @@ class MetricEvaluator(Protocol):
 - **Score:** Normalized overall (0.0 to 1.0)
 - **Default threshold:** 0.80
 
+#### HallucinationMetric
+- **What it measures:** What percentage of claims in the response lack source support?
+- **Prompt strategy:** System prompt instructs the judge to extract all factual claims from the response, then for each claim determine if it is supported by any provided context. Judge returns JSON: `{"claims": [{"text": "...", "supported": true/false, "source_chunk": 0}], "unsupported_count": 2, "total_claims": 10, "hallucination_rate": 0.2}`
+- **Score:** `1.0 - hallucination_rate` (inverted so higher = better, consistent with other metrics)
+- **Default threshold:** 0.95 (meaning max 5% hallucination rate, per PRD)
+
 **Error handling:** If the judge returns invalid JSON or the LLM call fails, the metric returns a `MetricResult` with `score=0.0`, `passed=False`, and `details` explaining the failure. Evaluation continues with remaining samples.
 
 ### 4. LLMJudgeEvaluator
@@ -141,7 +147,7 @@ class LLMJudgeEvaluator(EvaluatorInterface):
     def supported_metrics(self) -> list[str]: ...
 ```
 
-- If no metrics provided, defaults to all three (faithfulness, context_relevance, answer_relevance)
+- If no metrics provided, defaults to all four (faithfulness, context_relevance, answer_relevance, hallucination)
 - Iterates all samples × all metrics
 - Per-metric aggregation: mean score across all samples for that metric
 - Overall score: mean of all per-metric means
@@ -230,7 +236,7 @@ Note: `openai` is already in `packages/core`. Since evaluator is a separate work
 
 ## Files to Create/Modify
 
-### New Files (17)
+### New Files (18)
 - `packages/evaluator/src/rag_forge_evaluator/input_loader.py`
 - `packages/evaluator/src/rag_forge_evaluator/judge/__init__.py`
 - `packages/evaluator/src/rag_forge_evaluator/judge/base.py`
@@ -241,6 +247,7 @@ Note: `openai` is already in `packages/core`. Since evaluator is a separate work
 - `packages/evaluator/src/rag_forge_evaluator/metrics/faithfulness.py`
 - `packages/evaluator/src/rag_forge_evaluator/metrics/context_relevance.py`
 - `packages/evaluator/src/rag_forge_evaluator/metrics/answer_relevance.py`
+- `packages/evaluator/src/rag_forge_evaluator/metrics/hallucination.py`
 - `packages/evaluator/src/rag_forge_evaluator/metrics/llm_judge.py`
 - `packages/evaluator/src/rag_forge_evaluator/report/templates/audit_report.html.j2`
 - `packages/evaluator/src/rag_forge_evaluator/cli.py`

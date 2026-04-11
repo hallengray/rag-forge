@@ -38,3 +38,9 @@ class TestMockReranker:
         reranker = MockReranker()
         reranked = reranker.rerank("query", [], top_k=5)
         assert reranked == []
+
+    def test_non_positive_top_k_returns_empty(self) -> None:
+        reranker = MockReranker()
+        results = _sample_results()
+        assert reranker.rerank("query", results, top_k=0) == []
+        assert reranker.rerank("query", results, top_k=-1) == []

@@ -97,6 +97,16 @@ class TestHybridRetriever:
         assert len(results) <= 2
 
 
+    def test_invalid_alpha_raises(self) -> None:
+        dense, sparse = _build_retrievers()
+        import pytest
+
+        with pytest.raises(ValueError):
+            HybridRetriever(dense=dense, sparse=sparse, alpha=-0.1)
+        with pytest.raises(ValueError):
+            HybridRetriever(dense=dense, sparse=sparse, alpha=1.1)
+
+
 class TestHybridRetrieverWithReranker:
     def test_reranker_is_applied(self) -> None:
         dense, sparse = _build_retrievers()

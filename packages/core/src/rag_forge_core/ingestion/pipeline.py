@@ -120,7 +120,11 @@ class IngestionPipeline:
         # 6. Sparse index (optional): build BM25 index
         if self.sparse_retriever is not None:
             sparse_chunks = [
-                {"id": item.id, "text": item.text}
+                {
+                    "id": item.id,
+                    "text": item.text,
+                    "source_document": str(item.metadata.get("source_document", "")),
+                }
                 for item in items
             ]
             self.sparse_retriever.index(sparse_chunks)

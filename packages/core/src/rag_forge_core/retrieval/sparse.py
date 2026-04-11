@@ -22,6 +22,7 @@ class SparseRetriever:
         self._model: bm25s.BM25 | None = None
         self._chunk_ids: list[str] = []
         self._chunk_texts: list[str] = []
+        self._source_documents: list[str] = []
 
         # Auto-load if a persisted index exists at the given path.
         if index_path and Path(index_path).exists():
@@ -37,6 +38,9 @@ class SparseRetriever:
         Returns an empty list when the index has not been built yet or when
         *top_k* is zero/the corpus is empty.
         """
+        if top_k <= 0:
+            return []
+
         if self._model is None or not self._chunk_ids:
             return []
 
@@ -58,7 +62,7 @@ class SparseRetriever:
                     chunk_id=self._chunk_ids[doc_idx],
                     text=self._chunk_texts[doc_idx],
                     score=score,
-                    source_document="",
+                    source_document=self._source_documents[doc_idx],
                     metadata={"retriever": "bm25"},
                 )
             )
@@ -74,6 +78,7 @@ class SparseRetriever:
         """
         self._chunk_ids = [c["id"] for c in chunks]
         self._chunk_texts = [c["text"] for c in chunks]
+        self._source_documents = [c.get("source_document", "") for c in chunks]
 
         corpus_tokens = bm25s.tokenize(self._chunk_texts, show_progress=False)
         self._model = bm25s.BM25()
@@ -106,7 +111,7 @@ class SparseRetriever:
 
         metadata_path = path / "sparse_metadata.json"
         metadata_path.write_text(
-            json.dumps({"chunk_ids": self._chunk_ids, "chunk_texts": self._chunk_texts}),
+            json.dumps({"chunk_ids": self._chunk_ids, "source_documents": self._source_documents}),
             encoding="utf-8",
         )
 
@@ -135,3 +140,4 @@ class SparseRetriever:
             self._chunk_texts = metadata.get("chunk_texts", [
                 str(i) for i in range(len(self._chunk_ids))
             ])
+            self._source_documents = metadata.get("source_documents", [""] * len(self._chunk_ids))

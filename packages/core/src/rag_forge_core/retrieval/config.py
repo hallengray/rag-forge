@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RetrievalStrategy(StrEnum):
@@ -35,3 +35,9 @@ class RetrievalConfig(BaseModel):
     cohere_model: str = "rerank-v3.5"
     cohere_api_key: str | None = None
     bge_model_name: str = "BAAI/bge-reranker-v2-m3"
+
+    @model_validator(mode="after")
+    def _validate_reranker_requirements(self) -> "RetrievalConfig":
+        if self.reranker == RerankerType.COHERE and not self.cohere_api_key:
+            raise ValueError("cohere_api_key is required when reranker='cohere'")
+        return self

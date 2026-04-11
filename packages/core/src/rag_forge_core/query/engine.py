@@ -1,10 +1,9 @@
-"""RAG query engine: embed question → search vectors → generate answer."""
+"""RAG query engine: retrieve relevant chunks → generate answer."""
 
 from dataclasses import dataclass
 
-from rag_forge_core.embedding.base import EmbeddingProvider
 from rag_forge_core.generation.base import GenerationProvider
-from rag_forge_core.storage.base import SearchResult, VectorStore
+from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question based ONLY on the "
@@ -18,36 +17,27 @@ class QueryResult:
     """Result of a RAG query."""
 
     answer: str
-    sources: list[SearchResult]
+    sources: list[RetrievalResult]
     model_used: str
     chunks_retrieved: int
 
 
 class QueryEngine:
-    """Executes RAG queries: embed → search → generate."""
+    """Executes RAG queries using any RetrieverProtocol implementation."""
 
     def __init__(
         self,
-        embedder: EmbeddingProvider,
-        store: VectorStore,
+        retriever: RetrieverProtocol,
         generator: GenerationProvider,
-        collection_name: str = "rag-forge",
         top_k: int = 5,
     ) -> None:
-        self._embedder = embedder
-        self._store = store
+        self._retriever = retriever
         self._generator = generator
-        self._collection_name = collection_name
         self._top_k = top_k
 
     def query(self, question: str) -> QueryResult:
         """Execute a RAG query and return the generated answer with sources."""
-        query_vector = self._embedder.embed([question])[0]
-        try:
-            results = self._store.search(self._collection_name, query_vector, self._top_k)
-        except (ValueError, KeyError):
-            # Collection does not exist — no documents have been indexed yet.
-            results = []
+        results = self._retriever.retrieve(question, self._top_k)
 
         if not results:
             return QueryResult(

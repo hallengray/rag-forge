@@ -1,1 +1,4 @@
-"""Evaluation metrics: RAGAS, DeepEval, and LLM-as-Judge implementations."""
+"""Evaluation metrics: faithfulness, context relevance, answer relevance, hallucination."""
+from rag_forge_evaluator.metrics.base import MetricEvaluator
+
+__all__ = ["MetricEvaluator"]

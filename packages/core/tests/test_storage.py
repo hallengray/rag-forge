@@ -32,7 +32,7 @@ class TestQdrantStore:
         vectors = embedder.embed(texts)
         items = [
             VectorItem(id=str(i), vector=v, text=t, metadata={"index": i})
-            for i, (t, v) in enumerate(zip(texts, vectors))
+            for i, (t, v) in enumerate(zip(texts, vectors, strict=True))
         ]
         store.upsert("test", items)
         query_vector = embedder.embed(["Python programming"])[0]

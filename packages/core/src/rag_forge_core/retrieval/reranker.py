@@ -35,6 +35,8 @@ class CohereReranker:
         self, query: str, results: list[RetrievalResult], top_k: int = 5
     ) -> list[RetrievalResult]:
         """Call Cohere Rerank API, update scores, re-sort."""
+        if top_k <= 0:
+            return []
         if not results:
             return []
 
@@ -83,25 +85,31 @@ class BGELocalReranker:
         self, query: str, results: list[RetrievalResult], top_k: int = 5
     ) -> list[RetrievalResult]:
         """Score each (query, chunk) pair with cross-encoder, re-sort."""
+        if top_k <= 0:
+            return []
         if not results:
             return []
 
-        pairs = [[query, r.text] for r in results]
-        scores = self._model.predict(pairs)
+        try:
+            pairs = [[query, r.text] for r in results]
+            scores = self._model.predict(pairs)
 
-        scored = list(zip(results, scores, strict=True))
-        scored.sort(key=lambda x: float(x[1]), reverse=True)
+            scored = list(zip(results, scores, strict=True))
+            scored.sort(key=lambda x: float(x[1]), reverse=True)
 
-        return [
-            RetrievalResult(
-                chunk_id=r.chunk_id,
-                text=r.text,
-                score=float(s),
-                source_document=r.source_document,
-                metadata={**r.metadata, "reranker": self._model_name},
-            )
-            for r, s in scored[:top_k]
-        ]
+            return [
+                RetrievalResult(
+                    chunk_id=r.chunk_id,
+                    text=r.text,
+                    score=float(s),
+                    source_document=r.source_document,
+                    metadata={**r.metadata, "reranker": self._model_name},
+                )
+                for r, s in scored[:top_k]
+            ]
+        except Exception:
+            logger.warning("BGE local reranking failed, returning original results", exc_info=True)
+            return results[:top_k]
 
     def model_name(self) -> str:
         return self._model_name
@@ -114,6 +122,8 @@ class MockReranker:
         self, query: str, results: list[RetrievalResult], top_k: int = 5
     ) -> list[RetrievalResult]:
         """Reverse the input order (deterministic, predictable in tests)."""
+        if top_k <= 0:
+            return []
         _ = query
         return list(reversed(results))[:top_k]
 

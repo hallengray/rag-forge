@@ -45,13 +45,24 @@ class TestReranker:
         assert config.reranker == RerankerType.NONE
 
     def test_valid_reranker_types(self) -> None:
-        for reranker in ("none", "cohere", "bge-local"):
+        for reranker in ("none", "bge-local"):
             config = RetrievalConfig(reranker=reranker)
             assert config.reranker == RerankerType(reranker)
+        # Cohere requires an API key
+        config = RetrievalConfig(reranker="cohere", cohere_api_key="test-key")
+        assert config.reranker == RerankerType.COHERE
 
     def test_invalid_reranker_rejected(self) -> None:
         with pytest.raises(ValidationError):
             RetrievalConfig(reranker="invalid")
+
+    def test_cohere_reranker_requires_api_key(self) -> None:
+        with pytest.raises(ValidationError):
+            RetrievalConfig(reranker="cohere")
+
+    def test_cohere_reranker_with_api_key_succeeds(self) -> None:
+        config = RetrievalConfig(reranker="cohere", cohere_api_key="test-key")
+        assert config.reranker == RerankerType.COHERE
 
 
 class TestTopK:

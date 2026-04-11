@@ -6,11 +6,14 @@ This gives the embedding model document-level context, improving retrieval
 accuracy by 2-18% (per Anthropic research).
 """
 
+import logging
 from dataclasses import dataclass
 
 from rag_forge_core.chunking.base import Chunk
 from rag_forge_core.generation.base import GenerationProvider
 from rag_forge_core.parsing.base import Document
+
+logger = logging.getLogger(__name__)
 
 _SUMMARY_SYSTEM_PROMPT = (
     "You are a document summarizer. Generate a concise 2-3 sentence summary "
@@ -50,7 +53,15 @@ class ContextualEnricher:
         if not chunks:
             return []
 
-        summary = self._generate_summary(document)
+        try:
+            summary = self._generate_summary(document)
+        except Exception:
+            logger.warning(
+                "Enrichment failed for %s, returning original chunks",
+                document.source_path,
+                exc_info=True,
+            )
+            return list(chunks)
 
         enriched: list[Chunk] = []
         for chunk in chunks:

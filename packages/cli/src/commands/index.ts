@@ -61,6 +61,11 @@ export function registerIndexCommand(program: Command): void {
             configJson,
           ];
 
+          if (options.enrichmentGenerator && !options.enrich) {
+            spinner.fail("--enrichment-generator requires --enrich");
+            process.exit(1);
+          }
+
           if (options.enrich) {
             args.push("--enrich");
           }

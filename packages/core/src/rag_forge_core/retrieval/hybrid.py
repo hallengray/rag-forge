@@ -22,6 +22,8 @@ class HybridRetriever:
         alpha: float = 0.6,
         reranker: RerankerProtocol | None = None,
     ) -> None:
+        if not 0.0 <= alpha <= 1.0:
+            raise ValueError("alpha must be between 0.0 and 1.0")
         self._dense = dense
         self._sparse = sparse
         self._alpha = alpha
@@ -29,6 +31,9 @@ class HybridRetriever:
 
     def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
         """Run both retrievers, merge via RRF, optionally rerank."""
+        if top_k <= 0:
+            return []
+
         fetch_k = top_k * 2
 
         dense_results = self._dense.retrieve(query, fetch_k) if self._alpha > 0 else []
@@ -39,7 +44,7 @@ class HybridRetriever:
         if self._reranker is not None:
             merged = self._reranker.rerank(query, merged, top_k)
 
-        return merged
+        return merged[:top_k]
 
     def _rrf_merge(
         self,

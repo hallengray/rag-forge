@@ -63,6 +63,8 @@ class TestQueryEngine:
         engine = QueryEngine(retriever=retriever, generator=MockGenerator())
         result = engine.query("What is Python?")
         assert all(hasattr(s, "text") for s in result.sources)
+        assert all(hasattr(s, "chunk_id") for s in result.sources)
+        assert all(hasattr(s, "source_document") for s in result.sources)
 
     def test_query_respects_top_k(self, tmp_path: Path) -> None:
         embedder, store = self._index_docs(tmp_path)

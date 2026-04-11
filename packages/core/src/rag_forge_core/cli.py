@@ -105,9 +105,8 @@ def cmd_index(args: argparse.Namespace) -> None:
     # Optional enricher
     enricher = None
     if args.enrich:
-        enrichment_gen = args.enrichment_generator or embedding_provider
-        gen_provider = enrichment_gen if enrichment_gen in ("claude", "openai", "mock") else "mock"
-        enricher = ContextualEnricher(generator=_create_generator(gen_provider))
+        enrichment_gen = args.enrichment_generator or "mock"
+        enricher = ContextualEnricher(generator=_create_generator(enrichment_gen))
 
     # Optional sparse retriever for BM25 index
     sparse_retriever = None
@@ -153,6 +152,20 @@ def cmd_query(args: argparse.Namespace) -> None:
     alpha = float(args.alpha)
     reranker_type = args.reranker
     cohere_api_key = config.get("cohere_api_key")
+
+    if strategy in ("sparse", "hybrid") and not args.sparse_index_path:
+        json.dump(
+            {"success": False, "errors": [f"--sparse-index-path is required for {strategy} retrieval"]},
+            sys.stdout,
+        )
+        sys.exit(1)
+
+    if reranker_type != "none" and strategy != "hybrid":
+        json.dump(
+            {"success": False, "errors": ["--reranker is only supported with --strategy hybrid"]},
+            sys.stdout,
+        )
+        sys.exit(1)
 
     from rag_forge_core.query.engine import QueryEngine
 

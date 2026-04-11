@@ -33,7 +33,7 @@ class DenseRetriever:
                 chunk_id=r.id,
                 text=r.text,
                 score=r.score,
-                source_document=r.metadata.get("source_document", ""),
+                source_document=str(r.metadata.get("source_document", "")),
                 metadata=r.metadata,
             )
             for r in search_results

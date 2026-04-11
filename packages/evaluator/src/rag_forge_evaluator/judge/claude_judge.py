@@ -29,7 +29,8 @@ class ClaudeJudge:
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        return response.content[0].text  # type: ignore[union-attr]
+        block = response.content[0]
+        return block.text if hasattr(block, "text") else str(block)
 
     def model_name(self) -> str:
         return self._model

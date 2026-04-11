@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-import pymupdf  # type: ignore[import-untyped]
+import pymupdf
 
 from .base import Document as ParsedDocument
 
@@ -18,7 +18,7 @@ class PdfParser:
         if the file cannot be opened or read.
         """
         try:
-            pdf_file: Any = pymupdf.open(str(path))
+            pdf_file: Any = pymupdf.open(str(path))  # type: ignore[no-untyped-call]
             pages: list[str] = [pdf_file[i].get_text() for i in range(len(pdf_file))]
             text = "\n\n".join(pages)
             page_count: int = len(pages)

@@ -19,6 +19,7 @@ from rag_forge_core.ingestion.pipeline import IngestionPipeline
 from rag_forge_core.parsing.directory import DirectoryParser
 from rag_forge_core.retrieval.dense import DenseRetriever
 from rag_forge_core.retrieval.hybrid import HybridRetriever
+from rag_forge_core.retrieval.reranker import RerankerProtocol
 from rag_forge_core.retrieval.sparse import SparseRetriever
 from rag_forge_core.storage.qdrant import QdrantStore
 
@@ -61,7 +62,7 @@ def _create_generator(provider: str) -> GenerationProvider:
     )
 
 
-def _create_reranker(reranker_type: str, cohere_api_key: str | None = None):  # noqa: ANN201
+def _create_reranker(reranker_type: str, cohere_api_key: str | None = None) -> RerankerProtocol | None:
     """Create a reranker based on config string."""
     if reranker_type == "none":
         return None
@@ -159,6 +160,7 @@ def cmd_query(args: argparse.Namespace) -> None:
     store = QdrantStore()
     dense = DenseRetriever(embedder=embedder, store=store, collection_name=collection)
 
+    retriever: DenseRetriever | SparseRetriever | HybridRetriever
     if strategy == "dense":
         retriever = dense
     elif strategy == "sparse":

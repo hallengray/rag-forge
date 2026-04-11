@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from rag_forge_core.generation.base import GenerationProvider
 from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
+from rag_forge_core.retrieval.hybrid import HybridRetriever
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question based ONLY on the "
@@ -35,9 +36,20 @@ class QueryEngine:
         self._generator = generator
         self._top_k = top_k
 
-    def query(self, question: str) -> QueryResult:
-        """Execute a RAG query and return the generated answer with sources."""
-        results = self._retriever.retrieve(question, self._top_k)
+    def query(self, question: str, alpha: float | None = None) -> QueryResult:
+        """Execute a RAG query. Optional alpha override for hybrid retrieval."""
+        retriever = self._retriever
+
+        if alpha is not None and isinstance(retriever, HybridRetriever):
+            # Create a temporary retriever with the overridden alpha
+            retriever = HybridRetriever(
+                dense=retriever._dense,
+                sparse=retriever._sparse,
+                alpha=alpha,
+                reranker=retriever._reranker,
+            )
+
+        results = retriever.retrieve(question, self._top_k)
 
         if not results:
             return QueryResult(

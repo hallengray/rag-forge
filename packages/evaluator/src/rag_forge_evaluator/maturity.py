@@ -88,10 +88,29 @@ RMM_CRITERIA: list[RMMCriteria] = [
 
 
 class RMMScorer:
-    """Scores a RAG pipeline against the RAG Maturity Model."""
+    """Scores a RAG pipeline against the RAG Maturity Model.
+
+    For Phase 1, only RMM-0 through RMM-3 are checkable. Higher levels
+    require infrastructure features (caching, RBAC) not yet available.
+    """
 
     def assess(self, metrics: dict[str, float]) -> RMMLevel:
         """Determine the RMM level based on pipeline metrics."""
-        # Stub: full implementation will check each level's exit criteria
-        _ = metrics
-        return RMMLevel.NAIVE
+        level = RMMLevel.NAIVE
+
+        # RMM-1 (Recall): requires recall_at_k >= 0.70
+        if metrics.get("recall_at_k", 0.0) >= 0.70:
+            level = RMMLevel.RECALL
+
+            # RMM-2 (Precision): requires reranker improvement
+            if metrics.get("ndcg_improvement", 0.0) >= 0.10:
+                level = RMMLevel.PRECISION
+
+        # RMM-3 (Trust): requires faithfulness >= 0.85 AND context_relevance >= 0.80
+        faithfulness = metrics.get("faithfulness", 0.0)
+        context_relevance = metrics.get("context_relevance", 0.0)
+
+        if faithfulness >= 0.85 and context_relevance >= 0.80:
+            level = max(level, RMMLevel.TRUST)
+
+        return level

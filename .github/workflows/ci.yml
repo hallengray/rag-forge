@@ -34,25 +34,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Python dependencies
-        run: uv sync
+        run: uv sync --all-packages
 
       - name: Lint (TypeScript)
-        run: turbo run lint
+        run: pnpm exec turbo run lint
 
       - name: Lint (Python)
         run: uv run ruff check .
 
       - name: Typecheck (TypeScript)
-        run: turbo run typecheck
+        run: pnpm exec turbo run typecheck
 
       - name: Typecheck (Python)
         run: uv run mypy packages/core/src packages/evaluator/src packages/observability/src
 
       - name: Test (TypeScript)
-        run: turbo run test
+        run: pnpm exec turbo run test
 
       - name: Test (Python)
         run: uv run pytest
 
       - name: Build (TypeScript)
-        run: turbo run build
+        run: pnpm exec turbo run build

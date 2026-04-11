@@ -8,7 +8,15 @@ dependencies = [
     "pydantic>=2.0",
     "rich>=13.0",
     "tiktoken>=0.7",
+    "pymupdf>=1.24",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "openai>=1.30",
+    "qdrant-client>=1.9",
 ]
+
+[project.optional-dependencies]
+local = ["sentence-transformers>=3.0"]
 
 [build-system]
 requires = ["hatchling"]

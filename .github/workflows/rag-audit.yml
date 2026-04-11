@@ -1,0 +1,61 @@
+name: RAG Audit Gate
+
+# This workflow template is used by scaffolded projects to gate PRs on evaluation quality.
+# It runs rag-forge audit and blocks merge if faithfulness drops below the configured threshold.
+#
+# To use in your project:
+# 1. Copy this workflow to your .github/workflows/ directory
+# 2. Configure the golden set path and thresholds in rag-forge.config.ts
+# 3. Ensure rag-forge is installed as a dev dependency
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "eval/**"
+      - "rag-forge.config.*"
+
+jobs:
+  audit:
+    name: RAG Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          uv sync
+
+      # Uncomment when audit command is implemented (Phase 1):
+      # - name: Run RAG Audit
+      #   run: npx rag-forge audit --golden-set eval/golden_set.json
+      #
+      # - name: Check faithfulness gate
+      #   run: |
+      #     SCORE=$(cat reports/audit-report.json | jq '.metrics.faithfulness')
+      #     if (( $(echo "$SCORE < 0.85" | bc -l) )); then
+      #       echo "::error::Faithfulness score ($SCORE) is below threshold (0.85)"
+      #       exit 1
+      #     fi
+
+      - name: Placeholder
+        run: echo "RAG audit gate will be active after Phase 1 implementation"

@@ -1,0 +1,43 @@
+{
+  "name": "rag-forge-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "build": "turbo run build",
+    "build:py": "uv build",
+    "dev": "turbo run dev",
+    "test": "turbo run test && uv run pytest",
+    "test:ts": "turbo run test",
+    "test:py": "uv run pytest",
+    "lint": "turbo run lint && uv run ruff check .",
+    "lint:fix": "turbo run lint:fix && uv run ruff check --fix .",
+    "typecheck": "turbo run typecheck && uv run mypy packages/core/src packages/evaluator/src packages/observability/src",
+    "format": "prettier --write \"**/*.{md,yaml,yml,json}\" && uv run ruff format .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ],
+    "*.py": [
+      "uv run ruff check --fix",
+      "uv run ruff format"
+    ],
+    "*.{md,yaml,yml,json}": [
+      "prettier --write"
+    ]
+  }
+}

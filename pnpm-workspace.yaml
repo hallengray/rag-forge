@@ -1,0 +1,5 @@
+packages:
+  - packages/cli
+  - packages/mcp
+
+autoApproveBuilds: true

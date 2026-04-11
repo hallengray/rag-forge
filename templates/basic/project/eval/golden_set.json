@@ -1,0 +1,11 @@
+[
+  {
+    "query": "What is the main purpose of this system?",
+    "expected_answer_keywords": ["purpose", "system"],
+    "expected_source_chunk_ids": [],
+    "difficulty": "easy",
+    "topic": "general",
+    "requires_multi_hop": false,
+    "adversarial": false
+  }
+]

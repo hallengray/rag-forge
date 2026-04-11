@@ -31,7 +31,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Install Node dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Python dependencies
         run: uv sync --all-packages

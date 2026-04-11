@@ -45,8 +45,8 @@ class DirectoryParser:
         documents: list[Document] = []
         errors: list[str] = []
 
-        if not directory.exists():
-            errors.append(f"Directory does not exist: {directory}")
+        if not directory.is_dir():
+            errors.append(f"Path is not a directory: {directory}")
             return documents, errors
 
         for file_path in directory.rglob("*"):

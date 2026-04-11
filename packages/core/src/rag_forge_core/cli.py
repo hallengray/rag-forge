@@ -29,7 +29,12 @@ def _create_embedder(provider: str) -> EmbeddingProvider:
         from rag_forge_core.embedding.local_embedder import LocalEmbedder
 
         return LocalEmbedder()
-    return MockEmbedder()
+    if provider == "mock":
+        return MockEmbedder()
+    raise ValueError(
+        f"Unknown embedding provider: {provider!r}. "
+        "Expected one of: 'openai', 'local', 'mock'."
+    )
 
 
 def _create_generator(provider: str) -> GenerationProvider:
@@ -42,14 +47,23 @@ def _create_generator(provider: str) -> GenerationProvider:
         from rag_forge_core.generation.openai_generator import OpenAIGenerator
 
         return OpenAIGenerator()
-    from rag_forge_core.generation.mock_generator import MockGenerator
+    if provider == "mock":
+        from rag_forge_core.generation.mock_generator import MockGenerator
 
-    return MockGenerator()
+        return MockGenerator()
+    raise ValueError(
+        f"Unknown generation provider: {provider!r}. "
+        "Expected one of: 'mock', 'claude', 'openai'."
+    )
 
 
 def cmd_index(args: argparse.Namespace) -> None:
     """Run the index command."""
-    config = json.loads(args.config_json) if args.config_json else {}
+    try:
+        config = json.loads(args.config_json) if args.config_json else {}
+    except json.JSONDecodeError as e:
+        json.dump({"success": False, "errors": [f"Invalid --config-json: {e}"]}, sys.stdout)
+        sys.exit(1)
 
     source = Path(args.source)
     collection = args.collection or config.get("collection_name", "rag-forge")
@@ -85,7 +99,11 @@ def cmd_index(args: argparse.Namespace) -> None:
 
 def cmd_query(args: argparse.Namespace) -> None:
     """Run the query command."""
-    config = json.loads(args.config_json) if args.config_json else {}
+    try:
+        config = json.loads(args.config_json) if args.config_json else {}
+    except json.JSONDecodeError as e:
+        json.dump({"success": False, "errors": [f"Invalid --config-json: {e}"]}, sys.stdout)
+        sys.exit(1)
     embedding_provider = args.embedding or config.get("embedding_provider", "mock")
     generator_provider = args.generator or config.get("generator_provider", "mock")
     collection = args.collection or config.get("collection_name", "rag-forge")

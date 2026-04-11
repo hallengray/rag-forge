@@ -69,6 +69,7 @@ export function registerIndexCommand(program: Command): void {
             for (const error of output.errors) {
               logger.error(error);
             }
+            process.exit(1);
           }
         } catch (error) {
           spinner.fail("Indexing failed");

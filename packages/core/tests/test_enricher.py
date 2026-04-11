@@ -1,7 +1,7 @@
 """Tests for contextual enrichment (document summary prepending)."""
 
 from rag_forge_core.chunking.base import Chunk
-from rag_forge_core.context.enricher import ContextualEnricher, EnrichmentResult
+from rag_forge_core.context.enricher import ContextualEnricher
 from rag_forge_core.generation.mock_generator import MockGenerator
 from rag_forge_core.parsing.base import Document
 

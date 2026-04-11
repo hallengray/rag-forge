@@ -5,6 +5,7 @@ from pathlib import Path
 
 from rag_forge_evaluator.engine import EvaluationResult
 from rag_forge_evaluator.input_loader import InputLoader
+from rag_forge_evaluator.judge.base import JudgeProvider
 from rag_forge_evaluator.judge.mock_judge import MockJudge
 from rag_forge_evaluator.maturity import RMMLevel, RMMScorer
 from rag_forge_evaluator.metrics.llm_judge import LLMJudgeEvaluator
@@ -33,7 +34,7 @@ class AuditReport:
     samples_evaluated: int
 
 
-def _create_judge(model: str | None):
+def _create_judge(model: str | None) -> JudgeProvider:
     """Create a judge provider based on model name."""
     if model == "mock" or model is None:
         return MockJudge()

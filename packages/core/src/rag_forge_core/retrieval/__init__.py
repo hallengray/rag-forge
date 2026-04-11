@@ -13,16 +13,16 @@ from rag_forge_core.retrieval.reranker import (
 from rag_forge_core.retrieval.sparse import SparseRetriever
 
 __all__ = [
-    "RetrievalResult",
-    "RetrieverProtocol",
-    "RetrievalConfig",
-    "RetrievalStrategy",
-    "RerankerType",
-    "DenseRetriever",
-    "SparseRetriever",
-    "HybridRetriever",
-    "RerankerProtocol",
-    "CohereReranker",
     "BGELocalReranker",
+    "CohereReranker",
+    "DenseRetriever",
+    "HybridRetriever",
     "MockReranker",
+    "RerankerProtocol",
+    "RerankerType",
+    "RetrievalConfig",
+    "RetrievalResult",
+    "RetrievalStrategy",
+    "RetrieverProtocol",
+    "SparseRetriever",
 ]

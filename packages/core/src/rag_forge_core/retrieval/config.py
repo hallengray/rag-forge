@@ -1,11 +1,11 @@
 """Retrieval configuration with Pydantic validation (fail-fast)."""
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class RetrievalStrategy(str, Enum):
+class RetrievalStrategy(StrEnum):
     """Available retrieval strategies."""
 
     DENSE = "dense"
@@ -13,7 +13,7 @@ class RetrievalStrategy(str, Enum):
     HYBRID = "hybrid"
 
 
-class RerankerType(str, Enum):
+class RerankerType(StrEnum):
     """Available reranker implementations."""
 
     NONE = "none"

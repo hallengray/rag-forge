@@ -17,3 +17,21 @@ members = ["packages/core", "packages/evaluator", "packages/observability"]
 rag-forge-core = { workspace = true }
 rag-forge-evaluator = { workspace = true }
 rag-forge-observability = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/core/tests",
+    "packages/evaluator/tests",
+    "packages/observability/tests",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+# Optional integrations installed as extras — stubs not available
+[[tool.mypy.overrides]]
+module = ["anthropic.*", "cohere.*", "sentence_transformers.*", "bm25s.*", "jinja2.*"]
+ignore_missing_imports = true

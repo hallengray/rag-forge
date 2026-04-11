@@ -1,0 +1,19 @@
+[project]
+name = "rag-forge-workspace"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[tool.uv.workspace]
+members = ["packages/core", "packages/evaluator", "packages/observability"]
+
+[tool.uv.sources]
+rag-forge-core = { workspace = true }
+rag-forge-evaluator = { workspace = true }
+rag-forge-observability = { workspace = true }

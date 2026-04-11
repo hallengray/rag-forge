@@ -26,3 +26,21 @@ class TestRMMScorer:
         scorer = RMMScorer()
         level = scorer.assess({})
         assert level == RMMLevel.NAIVE
+
+
+class TestRMMScorerLogic:
+    def test_empty_metrics_returns_naive(self) -> None:
+        assert RMMScorer().assess({}) == RMMLevel.NAIVE
+
+    def test_trust_level_with_good_scores(self) -> None:
+        assert RMMScorer().assess({"faithfulness": 0.90, "context_relevance": 0.85}) == RMMLevel.TRUST
+
+    def test_trust_level_fails_with_low_faithfulness(self) -> None:
+        assert RMMScorer().assess({"faithfulness": 0.70, "context_relevance": 0.85}) < RMMLevel.TRUST
+
+    def test_trust_level_fails_with_low_relevance(self) -> None:
+        assert RMMScorer().assess({"faithfulness": 0.90, "context_relevance": 0.50}) < RMMLevel.TRUST
+
+    def test_caps_at_trust_for_phase1(self) -> None:
+        metrics = {"faithfulness": 0.95, "context_relevance": 0.90, "answer_relevance": 0.90, "hallucination": 0.98}
+        assert RMMScorer().assess(metrics) <= RMMLevel.TRUST

@@ -8,6 +8,7 @@ interface IndexResult {
   documents_processed: number;
   chunks_created: number;
   chunks_indexed: number;
+  enrichment_summaries: number;
   errors: string[];
 }
 
@@ -18,6 +19,15 @@ export function registerIndexCommand(program: Command): void {
     .option("-c, --collection <name>", "Collection name", "rag-forge")
     .option("-e, --embedding <provider>", "Embedding provider: openai | local | mock", "mock")
     .option("--strategy <name>", "Chunking strategy", "recursive")
+    .option("--enrich", "Enable contextual enrichment (document summary prepending)")
+    .option(
+      "--sparse-index-path <path>",
+      "Path to persist BM25 sparse index",
+    )
+    .option(
+      "--enrichment-generator <provider>",
+      "Generator for enrichment summaries: claude | openai | mock",
+    )
     .description("Index documents into the vector store")
     .action(
       async (options: {
@@ -25,6 +35,9 @@ export function registerIndexCommand(program: Command): void {
         collection: string;
         embedding: string;
         strategy: string;
+        enrich?: boolean;
+        sparseIndexPath?: string;
+        enrichmentGenerator?: string;
       }) => {
         const spinner = ora("Indexing documents...").start();
 
@@ -36,19 +49,36 @@ export function registerIndexCommand(program: Command): void {
             overlap_ratio: 0.1,
           });
 
+          const args = [
+            "index",
+            "--source",
+            options.source,
+            "--collection",
+            options.collection,
+            "--embedding",
+            options.embedding,
+            "--config-json",
+            configJson,
+          ];
+
+          if (options.enrichmentGenerator && !options.enrich) {
+            spinner.fail("--enrichment-generator requires --enrich");
+            process.exit(1);
+          }
+
+          if (options.enrich) {
+            args.push("--enrich");
+          }
+          if (options.sparseIndexPath) {
+            args.push("--sparse-index-path", options.sparseIndexPath);
+          }
+          if (options.enrichmentGenerator) {
+            args.push("--enrichment-generator", options.enrichmentGenerator);
+          }
+
           const result = await runPythonModule({
             module: "rag_forge_core.cli",
-            args: [
-              "index",
-              "--source",
-              options.source,
-              "--collection",
-              options.collection,
-              "--embedding",
-              options.embedding,
-              "--config-json",
-              configJson,
-            ],
+            args,
           });
 
           if (result.exitCode !== 0) {
@@ -64,6 +94,11 @@ export function registerIndexCommand(program: Command): void {
             logger.info(`Documents processed: ${String(output.documents_processed)}`);
             logger.info(`Chunks created: ${String(output.chunks_created)}`);
             logger.info(`Chunks indexed: ${String(output.chunks_indexed)}`);
+            if (output.enrichment_summaries > 0) {
+              logger.info(
+                `Documents enriched: ${String(output.enrichment_summaries)}`,
+              );
+            }
           } else {
             spinner.warn("Indexing completed with errors");
             for (const error of output.errors) {

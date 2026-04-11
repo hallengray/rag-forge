@@ -12,7 +12,7 @@ class LocalEmbedder:
 
     def __init__(self, model_name: str = "BAAI/bge-m3") -> None:
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
+            from sentence_transformers import SentenceTransformer
         except ImportError:
             msg = (
                 "sentence-transformers is required for local embeddings. "

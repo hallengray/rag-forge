@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from bs4 import BeautifulSoup  # type: ignore[import-untyped]
+from bs4 import BeautifulSoup
 
 from .base import Document
 

@@ -21,6 +21,7 @@ interface AuditResult {
   report_path: string;
   json_report_path: string;
   evaluator_engine: string;
+  pdf_report_path: string | null;
 }
 
 export function registerAuditCommand(program: Command): void {
@@ -31,6 +32,7 @@ export function registerAuditCommand(program: Command): void {
     .option("-j, --judge <model>", "Judge model: mock | claude | openai", "mock")
     .option("-o, --output <dir>", "Output directory for reports", "./reports")
     .option("--evaluator <engine>", "Evaluator engine: llm-judge | ragas | deepeval", "llm-judge")
+    .option("--pdf", "Generate PDF report (requires Playwright)")
     .description("Run evaluation on pipeline telemetry and generate audit report")
     .action(
       async (options: {
@@ -39,6 +41,7 @@ export function registerAuditCommand(program: Command): void {
         judge: string;
         output: string;
         evaluator: string;
+        pdf?: boolean;
       }) => {
         if (!options.input && !options.goldenSet) {
           logger.error("Either --input or --golden-set is required");
@@ -55,6 +58,9 @@ export function registerAuditCommand(program: Command): void {
           }
           if (options.goldenSet) {
             args.push("--golden-set", options.goldenSet);
+          }
+          if (options.pdf) {
+            args.push("--pdf");
           }
 
           const result = await runPythonModule({
@@ -92,6 +98,9 @@ export function registerAuditCommand(program: Command): void {
 
           logger.info(`Evaluator: ${output.evaluator_engine}`);
           logger.success(`Report saved to: ${output.report_path}`);
+          if (output.pdf_report_path) {
+            logger.success(`PDF report: ${output.pdf_report_path}`);
+          }
         } catch (error) {
           spinner.fail("Audit failed");
           const message = error instanceof Error ? error.message : "Unknown error";

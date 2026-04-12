@@ -300,6 +300,31 @@ def cmd_status(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_inspect(args: argparse.Namespace) -> None:
+    """Inspect a specific chunk by ID."""
+    collection = args.collection or "rag-forge"
+    chunk_id = args.chunk_id
+    store = QdrantStore()
+
+    try:
+        result = store.get_by_id(collection, chunk_id)
+    except Exception as e:
+        json.dump({"found": False, "chunk_id": chunk_id, "collection": collection, "error": str(e)}, sys.stdout)
+        return
+
+    if result is None:
+        json.dump({"found": False, "chunk_id": chunk_id, "collection": collection}, sys.stdout)
+        return
+    output = {
+        "found": True,
+        "chunk_id": chunk_id,
+        "text": result.text,
+        "metadata": result.metadata,
+        "collection": collection,
+    }
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point for the Python CLI bridge."""
     parser = argparse.ArgumentParser(prog="rag-forge-core")
@@ -355,6 +380,10 @@ def main() -> None:
     status_parser = subparsers.add_parser("status", help="Check pipeline status")
     status_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect a chunk by ID")
+    inspect_parser.add_argument("--chunk-id", required=True, help="The chunk ID to inspect")
+    inspect_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     args = parser.parse_args()
     if args.command == "index":
         cmd_index(args)
@@ -362,6 +391,8 @@ def main() -> None:
         cmd_query(args)
     elif args.command == "status":
         cmd_status(args)
+    elif args.command == "inspect":
+        cmd_inspect(args)
 
 
 if __name__ == "__main__":

@@ -82,3 +82,28 @@ class QdrantStore:
     def delete_collection(self, collection: str) -> None:
         with contextlib.suppress(Exception):
             self._client.delete_collection(collection)
+
+    def get_by_id(self, collection: str, item_id: str) -> VectorItem | None:
+        """Retrieve a single chunk by its application-level UUID stored in the payload."""
+        try:
+            from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+            results = self._client.scroll(
+                collection_name=collection,
+                scroll_filter=Filter(
+                    must=[FieldCondition(key="item_id", match=MatchValue(value=item_id))]
+                ),
+                limit=1,
+                with_vectors=False,
+            )
+            points = results[0]
+            if not points:
+                return None
+            point = points[0]
+            payload = dict(point.payload or {})
+            text = str(payload.pop("text", ""))
+            payload.pop("item_id", None)
+            meta = {k: v for k, v in payload.items() if isinstance(v, (str, int, float))}
+            return VectorItem(id=item_id, vector=[], text=text, metadata=meta)
+        except (ValueError, KeyError):
+            return None

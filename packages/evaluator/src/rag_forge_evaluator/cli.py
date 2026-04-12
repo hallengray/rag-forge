@@ -26,6 +26,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         golden_set_path=Path(args.golden_set) if args.golden_set else None,
         judge_model=args.judge or config_data.get("judge_model", "mock"),
         output_dir=Path(args.output),
+        generate_pdf=args.pdf,
         thresholds=config_data.get("thresholds"),
         evaluator_engine=args.evaluator,
         tracer=tracer,
@@ -47,6 +48,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         "report_path": str(report.report_path),
         "json_report_path": str(report.json_report_path),
         "evaluator_engine": config.evaluator_engine,
+        "pdf_report_path": str(report.pdf_report_path) if report.pdf_report_path else None,
     }
     json.dump(output, sys.stdout)
     tracing.shutdown()
@@ -68,6 +70,7 @@ def main() -> None:
         choices=["llm-judge", "ragas", "deepeval"],
         help="Evaluator engine: llm-judge | ragas | deepeval",
     )
+    audit_parser.add_argument("--pdf", action="store_true", help="Generate PDF report")
 
     args = parser.parse_args()
     if args.command == "audit":

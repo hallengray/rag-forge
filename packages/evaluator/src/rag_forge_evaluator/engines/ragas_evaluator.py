@@ -18,6 +18,9 @@ class RagasEvaluator(EvaluatorInterface):
         self._thresholds = thresholds or {}
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
+        if not samples:
+            return EvaluationResult(metrics=[], overall_score=0.0, samples_evaluated=0, passed=False)
+
         from datasets import Dataset
         from ragas import evaluate as ragas_evaluate
         from ragas.metrics import (

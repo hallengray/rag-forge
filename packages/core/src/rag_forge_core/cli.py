@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 
 from rag_forge_core.chunking.config import ChunkConfig
-from rag_forge_core.query.agentic import AgenticQueryEngine
 from rag_forge_core.chunking.recursive import RecursiveChunker
 from rag_forge_core.context.enricher import ContextualEnricher
 from rag_forge_core.context.semantic_cache import SemanticCache
@@ -19,6 +18,7 @@ from rag_forge_core.embedding.mock_embedder import MockEmbedder
 from rag_forge_core.generation.base import GenerationProvider
 from rag_forge_core.ingestion.pipeline import IngestionPipeline
 from rag_forge_core.parsing.directory import DirectoryParser
+from rag_forge_core.query.agentic import AgenticQueryEngine
 from rag_forge_core.retrieval.dense import DenseRetriever
 from rag_forge_core.retrieval.hybrid import HybridRetriever
 from rag_forge_core.retrieval.reranker import RerankerProtocol
@@ -251,19 +251,22 @@ def cmd_query(args: argparse.Namespace) -> None:
     tracing.enable()
     tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
-    engine = QueryEngine(
-        retriever=retriever,
-        generator=_create_generator(generator_provider),
-        top_k=top_k,
-        input_guard=input_guard,
-        output_guard=output_guard,
-        tracer=tracer,
-        cache=cache,
-    )
+    _generator = _create_generator(generator_provider)
+    engine: QueryEngine | AgenticQueryEngine
     if args.agent_mode:
         engine = AgenticQueryEngine(
             retriever=retriever,
-            generator=_create_generator(generator_provider),
+            generator=_generator,
+            top_k=top_k,
+            input_guard=input_guard,
+            output_guard=output_guard,
+            tracer=tracer,
+            cache=cache,
+        )
+    else:
+        engine = QueryEngine(
+            retriever=retriever,
+            generator=_generator,
             top_k=top_k,
             input_guard=input_guard,
             output_guard=output_guard,

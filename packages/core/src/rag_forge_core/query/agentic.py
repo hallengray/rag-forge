@@ -7,15 +7,13 @@ import logging
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
-from rag_forge_core.retrieval.base import RetrievalResult
-
 if TYPE_CHECKING:
     from opentelemetry import trace
 
     from rag_forge_core.context.semantic_cache import SemanticCache
     from rag_forge_core.generation.base import GenerationProvider
     from rag_forge_core.query.engine import QueryResult
-    from rag_forge_core.retrieval.base import RetrieverProtocol
+    from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
     from rag_forge_core.security.input_guard import InputGuard
     from rag_forge_core.security.output_guard import OutputGuard
 

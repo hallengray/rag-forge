@@ -1,0 +1,23 @@
+[project]
+name = "my-rag-pipeline"
+version = "0.1.0"
+description = "A hybrid RAG pipeline with BM25 + vector search, reranking, and contextual enrichment"
+requires-python = ">=3.11"
+dependencies = [
+    "rag-forge-core[cohere]",
+    "rag-forge-evaluator",
+    "qdrant-client>=1.9",
+    "sentence-transformers>=3.0",
+]
+
+[tool.rag-forge]
+template = "hybrid"
+chunk_strategy = "recursive"
+chunk_size = 512
+overlap_ratio = 0.1
+vector_db = "qdrant"
+embedding_model = "BAAI/bge-m3"
+retrieval_strategy = "hybrid"
+retrieval_alpha = 0.6
+reranker = "cohere"
+enrich = true

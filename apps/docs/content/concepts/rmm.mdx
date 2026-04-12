@@ -1,0 +1,43 @@
+---
+title: RAG Maturity Model
+---
+
+# RAG Maturity Model
+
+> The RAG Maturity Model (RMM) is a six-level scoring framework that measures how production-ready your retrieval-augmented generation pipeline is. It gives you a concrete, measurable target to aim for instead of a vague sense that your pipeline "works." Each level has explicit pass/fail criteria, so you always know exactly what to fix next.
+
+## Why this matters
+
+Most RAG pipelines start the same way: embed some documents, do a vector search, feed the results to an LLM, and ship it. That works well enough to demo. It rarely works well enough for production. Users get hallucinated answers, irrelevant context, slow responses, or results that vary unpredictably. The root causes are different at each stage of maturity — sometimes it is retrieval quality, sometimes it is answer faithfulness, sometimes it is operational readiness — and the same fix does not work at every stage.
+
+The RMM gives you a structured path through those stages. Rather than debugging blindly, you run `rag-forge audit` or `rag-forge assess` to find out which level you are at, then read the exit criteria for the next level to know exactly what to improve. The model is hierarchical: you cannot reach RMM-3 without first satisfying RMM-1 and RMM-2, because each layer of quality depends on the one below it.
+
+## How RAG-Forge implements it
+
+The RMM is defined in `packages/evaluator/src/rag_forge_evaluator/maturity.py`. The `RMMLevel` enum assigns integer values 0 through 5, and the `RMM_CRITERIA` list pairs each level with its human-readable name, description, and list of requirements. The `RMMScorer` class translates a dictionary of pipeline metrics into a level by checking the criteria in order.
+
+The six levels are:
+
+**RMM-0 — Naive RAG.** Your pipeline returns results. There is no evaluation in place. This is the starting point, not a goal.
+
+**RMM-1 — Better Recall** (`recall_at_k >= 0.70`). Hybrid search (dense vector + BM25 sparse) is active and your Recall@5 is at least 70%. To reach this level from RMM-0: configure both dense retrieval and a BM25 sparse index, then verify recall on a representative query set.
+
+**RMM-2 — Better Precision** (`ndcg_improvement >= 0.10`). A reranker is active and your nDCG@10 has improved by at least 10% over the RMM-1 baseline. HNSW parameters are tuned. To reach this level from RMM-1: add a `CohereReranker` or `BGELocalReranker` and verify the nDCG lift.
+
+**RMM-3 — Better Trust** (`faithfulness >= 0.85`, `context_relevance >= 0.80`). InputGuard and OutputGuard are active, every answer includes citations mapped to chunk IDs, and your faithfulness score is at least 85%. To reach this level from RMM-2: enable guardrails and run an audit against a golden set to verify the faithfulness and context relevance thresholds.
+
+**RMM-4 — Better Workflow** (`latency_p95 <= 4000 ms`, `ttft_p90 <= 2000 ms`). Semantic caching is active, P95 latency is under 4 seconds, TTFT P90 is under 2 seconds, and cost per query is tracked. To reach this level from RMM-3: enable the caching layer and instrument latency and cost tracking.
+
+**RMM-5 — Enterprise.** RBAC is active, drift detection is live, CI/CD evaluation gates run on every pull request, and adversarial tests pass. To reach this level from RMM-4: wire `rag-forge assess` into your CI pipeline and enable the drift detector in `packages/observability/src/rag_forge_observability/drift.py`.
+
+The `RMMScorer.assess` method in `maturity.py` checks RMM-1 and RMM-2 through the recall/nDCG path and RMM-3 independently via faithfulness and context relevance, then returns the highest level achieved. The `RMMAssessor` class in `assess.py` provides a broader check that reads your `rag-forge.config.ts` and an optional prior audit JSON to assess infrastructure features (caching, RBAC, drift detection) that cannot be inferred from metrics alone.
+
+## Trade-offs
+
+The RMM is a simplification. Real pipelines do not always fail cleanly at one level — you might have excellent faithfulness (RMM-3 territory) but poor recall (RMM-1). The scorer in `maturity.py` resolves ambiguity by treating the trust check as independent: you can reach RMM-3 even without having passed RMM-2, if your metrics qualify. The model is also intentionally conservative on RMM-4 and RMM-5: these levels require infrastructure (caching, RBAC, CI gates) that must be verified from your config, not inferred from a single audit run.
+
+## Further reading
+
+- [rag-forge audit](/cli/audit) — run a full evaluation and get an RMM score
+- [rag-forge assess](/cli/assess) — inspect your config and last audit to determine your current level
+- [Evaluation concepts](/concepts/evaluation) — understand the metrics the RMM is built on

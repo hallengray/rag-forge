@@ -1,0 +1,45 @@
+---
+title: Retrieval
+---
+
+# Retrieval
+
+> Retrieval is the step where your pipeline turns a user query into a ranked list of relevant text chunks. The quality of this list is the single most important upstream factor in your final answer quality — an LLM cannot reason correctly about information it was never given. RAG-Forge supports three retrieval modes: dense vector search, hybrid search combining dense and sparse signals, and optional reranking as a post-processing step.
+
+## Why this matters
+
+Vector search is powerful at capturing semantic similarity, but it has a known weakness with exact-match queries: a document that uses the exact keyword the user typed may score lower than a semantically related but lexically different document. Sparse retrieval (BM25) is the opposite — it excels at exact-match and rare-term queries, but misses paraphrase and concept-level matches. Hybrid retrieval combines both signals so neither weakness dominates.
+
+Even after combining dense and sparse signals, the initial ranked list is produced by independent models that do not jointly score the query against each chunk. A reranker fixes this: it takes the merged candidate list and scores every (query, chunk) pair together using a cross-encoder model, which is more accurate but slower and more expensive. Running reranking only on the top candidates from the initial retrieval (rather than the entire index) keeps the cost tractable.
+
+## How RAG-Forge implements it
+
+All retrieval implementations live in `packages/core/src/rag_forge_core/retrieval/`.
+
+**Dense retrieval** (`dense.py`, class `DenseRetriever`). Wraps an `EmbeddingProvider` and a `VectorStore`. On each query, it embeds the query text, calls `VectorStore.search`, and returns a list of `RetrievalResult` objects with `chunk_id`, `text`, `score`, `source_document`, and `metadata`.
+
+**Sparse retrieval** (`sparse.py`, class `SparseRetriever`). BM25 scoring via the `bm25s` library. The index can optionally be persisted to disk — when `index_path` is set, the index is saved automatically after `index()` is called and loaded automatically on construction when the path already exists. Returns the same `RetrievalResult` interface as the dense retriever, with `retriever: "bm25"` in metadata.
+
+**Hybrid retrieval** (`hybrid.py`, class `HybridRetriever`). Runs both `DenseRetriever` and `SparseRetriever`, then merges the result lists using Reciprocal Rank Fusion (RRF) with the standard `k=60` constant. The `alpha` parameter controls the blend: `1.0` is pure dense, `0.0` is pure sparse, and the default is `0.6` (dense-weighted). Each retriever fetches `top_k * 2` candidates before merging, so the final list of `top_k` results has seen a wider candidate pool than either retriever would produce alone.
+
+**Reranking** (`reranker.py`). Two production implementations ship: `CohereReranker` (calls the Cohere Rerank API, default model `rerank-v3.5`) and `BGELocalReranker` (runs `BAAI/bge-reranker-v2-m3` locally via `sentence-transformers`). Both implement `RerankerProtocol`. A `MockReranker` is available for testing. The `HybridRetriever` accepts an optional `reranker` at construction time; when set, it post-processes the merged results before returning them.
+
+The full retrieval pipeline when all features are enabled:
+
+1. Embed the query (dense)
+2. Search the vector store and the BM25 index in parallel
+3. Merge the two result lists with RRF using the configured `alpha`
+4. Pass the merged candidates to the reranker for cross-encoder scoring
+5. Return the top-k reranked results
+
+Reaching RMM-1 requires hybrid search to be active with Recall@5 at least 70%. Reaching RMM-2 requires a reranker to be active with at least a 10% nDCG@10 improvement over the RMM-1 baseline.
+
+## Trade-offs
+
+Dense-only retrieval is the simplest setup and works well for general prose. Adding BM25 is low-cost and almost always improves recall on real user queries, which tend to include exact product names, error codes, and technical terms. Adding a reranker improves precision but adds latency: the Cohere API adds a network round-trip, and the local BGE model adds CPU/GPU inference time per query. For latency-sensitive deployments, consider running the reranker only on the top 20 candidates rather than 50.
+
+## Further reading
+
+- [rag-forge query](/cli/query) — run a query against an indexed collection
+- [Chunking concepts](/concepts/chunking) — how source text becomes the chunks you retrieve
+- [RMM — Better Recall and Better Precision levels](/concepts/rmm) — the retrieval quality gates

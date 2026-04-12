@@ -21,6 +21,7 @@ class InjectionCheckResult:
 
 _DEFAULT_PATTERNS: list[str] = [
     r"ignore\s+(all\s+|any\s+)?(previous|prior|above)\s+(instructions|prompts|rules)",
+    r"ignore\s+instructions",
     r"you\s+are\s+now\s+",
     r"act\s+as\s+(a\s+|an\s+|if\s+)?",
     r"system\s+prompt",

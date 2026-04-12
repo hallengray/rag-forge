@@ -34,6 +34,8 @@ def _token_count(text: str) -> int:
 
 def _split_into_sentences(text: str) -> list[str]:
     """Split text into sentences for LLM analysis."""
+    # Normalise Windows line endings
+    text = text.replace("\r\n", "\n")
     paragraphs = text.split("\n\n")
     sentences: list[str] = []
     for para in paragraphs:

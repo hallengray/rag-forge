@@ -7,6 +7,7 @@ Feb 2026 benchmark: 54% accuracy vs recursive at 69% — use with care.
 """
 
 import math
+import re
 
 import tiktoken
 
@@ -18,6 +19,7 @@ _ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
 def _token_count(text: str) -> int:
+    """Count tokens using tiktoken cl100k_base encoding."""
     return len(_ENCODING.encode(text))
 
 
@@ -32,14 +34,29 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 
 
 def _split_sentences(text: str) -> list[str]:
-    """Split text into sentences using paragraph and sentence boundaries."""
+    """Split text into sentences using paragraph and sentence boundaries.
+
+    Uses a simple heuristic: split on ". ", "? ", "! " when the period
+    follows a lowercase letter or closing punctuation. This avoids splitting
+    on common abbreviations like "Mr.", "U.S.", "e.g." where the period
+    follows an uppercase letter. For production use with complex prose,
+    consider a proper sentence tokenizer (NLTK, spaCy).
+
+    Note: ``chunk_size`` and ``overlap_tokens`` from ChunkConfig are not
+    enforced — merged groups can exceed chunk_size. This is by design:
+    semantic chunking prioritises topic coherence over size limits.
+    """
+    # Normalise Windows line endings
+    text = text.replace("\r\n", "\n")
     paragraphs = text.split("\n\n")
     sentences: list[str] = []
     for para in paragraphs:
         para = para.strip()
         if not para:
             continue
-        parts = para.replace(". ", ".\n").replace("? ", "?\n").replace("! ", "!\n").split("\n")
+        # Split on sentence-ending punctuation followed by a space,
+        # but only when preceded by a lowercase letter or closing quote/paren
+        parts = re.split(r"(?<=[a-z.)\"\'])\. |\? |! ", para)
         for part in parts:
             part = part.strip()
             if part:

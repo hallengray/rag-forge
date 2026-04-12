@@ -130,6 +130,9 @@ class LLMDrivenChunker(ChunkStrategy):
                     type(boundaries),
                 )
                 return self._fallback_boundaries(sentences)
+            # Empty list from LLM means "no boundaries" — return as-is (single group)
+            if len(boundaries) == 0:
+                return []
             valid = sorted({int(b) for b in boundaries if 0 < int(b) < len(sentences)})
             return valid if valid else self._fallback_boundaries(sentences)
         except (json.JSONDecodeError, ValueError, TypeError) as e:

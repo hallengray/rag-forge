@@ -96,6 +96,13 @@ class SemanticChunker(ChunkStrategy):
 
         embeddings = self._embedder.embed(sentences)
 
+        if len(embeddings) != len(sentences):
+            msg = (
+                f"Embedder returned {len(embeddings)} embeddings for "
+                f"{len(sentences)} sentences"
+            )
+            raise ValueError(msg)
+
         groups: list[list[str]] = [[sentences[0]]]
         for i in range(1, len(sentences)):
             sim = _cosine_similarity(embeddings[i - 1], embeddings[i])

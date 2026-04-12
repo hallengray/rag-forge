@@ -68,6 +68,11 @@ export function registerIndexCommand(program: Command): void {
 
           args.push("--strategy", options.strategy);
 
+          if (options.strategy === "llm-driven" && !options.chunkingGenerator) {
+            spinner.fail("--chunking-generator is required for llm-driven strategy");
+            process.exit(1);
+          }
+
           if (options.chunkingGenerator) {
             args.push("--chunking-generator", options.chunkingGenerator);
           }

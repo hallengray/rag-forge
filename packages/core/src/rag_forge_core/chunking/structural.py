@@ -65,6 +65,7 @@ class StructuralChunker(ChunkStrategy):
                             source_document=source,
                             strategy_used="structural",
                             parent_section=header_title,
+                            overlap_tokens=sc.overlap_tokens,
                         )
                     )
                     idx += 1

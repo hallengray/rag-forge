@@ -1,8 +1,10 @@
 """RAG query engine: retrieve relevant chunks → generate answer."""
 
+from __future__ import annotations
+
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry import trace
 
@@ -11,6 +13,9 @@ from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
 from rag_forge_core.retrieval.hybrid import HybridRetriever
 from rag_forge_core.security.input_guard import InputGuard
 from rag_forge_core.security.output_guard import OutputGuard
+
+if TYPE_CHECKING:
+    from rag_forge_core.context.semantic_cache import SemanticCache
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question based ONLY on the "
@@ -42,6 +47,7 @@ class QueryEngine:
         input_guard: InputGuard | None = None,
         output_guard: OutputGuard | None = None,
         tracer: trace.Tracer | None = None,
+        cache: SemanticCache | None = None,
     ) -> None:
         self._retriever = retriever
         self._generator = generator
@@ -49,6 +55,7 @@ class QueryEngine:
         self._input_guard = input_guard
         self._output_guard = output_guard
         self._tracer = tracer
+        self._cache = cache
 
     def _span(self, name: str) -> Any:
         """Return an active span context manager, or a no-op if no tracer is configured."""
@@ -59,6 +66,15 @@ class QueryEngine:
     def query(self, question: str, alpha: float | None = None, user_id: str = "default") -> QueryResult:
         """Execute a RAG query. Optional alpha override for hybrid retrieval."""
         with self._span("rag-forge.query"):
+            # 0. Cache check
+            if self._cache is not None:
+                cached = self._cache.get(question)
+                if cached is not None:
+                    with self._span("rag-forge.cache_hit") as span:
+                        if span is not None:
+                            span.set_attribute("cache_hit", True)
+                    return cached
+
             # 1. Input guard
             if self._input_guard is not None:
                 with self._span("rag-forge.input_guard") as span:
@@ -136,9 +152,14 @@ class QueryEngine:
                             blocked_reason=output_result.reason,
                         )
 
-            return QueryResult(
+            result = QueryResult(
                 answer=answer,
                 sources=results,
                 model_used=self._generator.model_name(),
                 chunks_retrieved=len(results),
             )
+
+            if self._cache is not None:
+                self._cache.set(question, result)
+
+            return result

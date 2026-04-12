@@ -10,11 +10,16 @@ import sys
 from pathlib import Path
 
 from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator
+from rag_forge_observability.tracing import TracingManager
 
 
 def cmd_audit(args: argparse.Namespace) -> None:
     """Run the audit command."""
     config_data = json.loads(args.config_json) if args.config_json else {}
+
+    tracing = TracingManager()
+    tracing.enable()
+    tracer = tracing.get_tracer()
 
     config = AuditConfig(
         input_path=Path(args.input) if args.input else None,
@@ -23,6 +28,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         output_dir=Path(args.output),
         thresholds=config_data.get("thresholds"),
         evaluator_engine=args.evaluator,
+        tracer=tracer,
     )
 
     report = AuditOrchestrator(config).run()
@@ -43,6 +49,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         "evaluator_engine": config.evaluator_engine,
     }
     json.dump(output, sys.stdout)
+    tracing.shutdown()
 
 
 def main() -> None:

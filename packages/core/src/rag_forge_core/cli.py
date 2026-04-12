@@ -105,19 +105,26 @@ def cmd_index(args: argparse.Namespace) -> None:
     chunk_size = config.get("chunk_size", 512)
     overlap_ratio = config.get("overlap_ratio", 0.1)
 
-    strategy = args.strategy if hasattr(args, "strategy") and args.strategy else "recursive"
+    strategy = args.strategy
     chunk_config = ChunkConfig(
         strategy=strategy,
         chunk_size=chunk_size,
         overlap_ratio=overlap_ratio,
     )
 
+    if strategy == "llm-driven" and not args.chunking_generator:
+        json.dump(
+            {"success": False, "errors": ["--chunking-generator is required for llm-driven strategy"]},
+            sys.stdout,
+        )
+        sys.exit(1)
+
     embedder = _create_embedder(embedding_provider)
     chunker = create_chunker(
         config=chunk_config,
         embedder=embedder if strategy == "semantic" else None,
         generator=(
-            _create_generator(args.chunking_generator or "mock")
+            _create_generator(args.chunking_generator)
             if strategy == "llm-driven"
             else None
         ),

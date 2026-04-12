@@ -157,6 +157,29 @@ def cmd_golden_validate(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_assess(args: argparse.Namespace) -> None:
+    """Run RMM assessment."""
+    from rag_forge_evaluator.assess import RMMAssessor
+
+    try:
+        config_data = json.loads(args.config_json) if args.config_json else {}
+        assessor = RMMAssessor()
+        audit_metrics: dict[str, float] | None = None
+        if args.audit_report:
+            audit_metrics = assessor.load_audit_metrics(args.audit_report)
+        result = assessor.assess(config=config_data, audit_metrics=audit_metrics)
+        output = {
+            "success": True,
+            "rmm_level": result.rmm_level,
+            "rmm_name": result.rmm_name,
+            "badge": result.badge,
+            "criteria": result.criteria,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(prog="rag-forge-evaluator")
@@ -191,6 +214,11 @@ def main() -> None:
     golden_validate_parser = subparsers.add_parser("golden-validate", help="Validate golden set")
     golden_validate_parser.add_argument("--golden-set", required=True, help="Path to golden set JSON")
 
+    assess_parser = subparsers.add_parser("assess", help="Run RMM assessment")
+    assess_parser.add_argument("--config-json", help="Pipeline config as JSON")
+    assess_parser.add_argument("--audit-report", help="Path to latest audit JSON report")
+    assess_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     args = parser.parse_args()
     if args.command == "audit":
         cmd_audit(args)
@@ -200,6 +228,8 @@ def main() -> None:
         cmd_golden_add(args)
     elif args.command == "golden-validate":
         cmd_golden_validate(args)
+    elif args.command == "assess":
+        cmd_assess(args)
 
 
 if __name__ == "__main__":

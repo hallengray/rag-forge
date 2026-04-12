@@ -358,6 +358,58 @@ def cmd_inspect(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_guardrails_test(args: argparse.Namespace) -> None:
+    """Run adversarial test suite against security guards."""
+    from rag_forge_core.security.adversarial import AdversarialRunner
+
+    try:
+        user_corpus = args.corpus if hasattr(args, "corpus") and args.corpus else None
+        runner = AdversarialRunner(user_corpus_path=user_corpus)
+        result = runner.run()
+        output = {
+            "success": True,
+            "total_tested": result.total_tested,
+            "blocked": result.blocked,
+            "passed_through": result.passed_through,
+            "pass_rate": result.pass_rate,
+            "by_category": result.by_category,
+            "failures": result.failures,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_guardrails_scan_pii(args: argparse.Namespace) -> None:
+    """Scan vector store collection for PII."""
+    from rag_forge_core.security.pii_scanner import PIICollectionScanner
+
+    try:
+        collection = args.collection or "rag-forge"
+        store = QdrantStore()
+        count = store.count(collection)
+        all_chunks: list[dict[str, str]] = []
+        points = store._client.scroll(collection_name=collection, limit=count)[0]
+        for point in points:
+            payload = dict(point.payload or {})
+            text = str(payload.get("text", ""))
+            chunk_id = str(payload.get("item_id", point.id))
+            all_chunks.append({"id": chunk_id, "text": text})
+
+        scanner = PIICollectionScanner()
+        report = scanner.scan_chunks(all_chunks)
+        output = {
+            "success": True,
+            "chunks_scanned": report.chunks_scanned,
+            "chunks_with_pii": report.chunks_with_pii,
+            "pii_types": report.pii_types,
+            "affected_chunks": report.affected_chunks,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point for the Python CLI bridge."""
     parser = argparse.ArgumentParser(prog="rag-forge-core")
@@ -427,6 +479,12 @@ def main() -> None:
     inspect_parser.add_argument("--chunk-id", required=True, help="The chunk ID to inspect")
     inspect_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
+    guardrails_test_parser = subparsers.add_parser("guardrails-test", help="Run adversarial test suite")
+    guardrails_test_parser.add_argument("--corpus", help="Path to custom adversarial corpus JSON")
+
+    guardrails_scan_parser = subparsers.add_parser("guardrails-scan-pii", help="Scan collection for PII")
+    guardrails_scan_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     args = parser.parse_args()
     if args.command == "index":
         cmd_index(args)
@@ -436,6 +494,10 @@ def main() -> None:
         cmd_status(args)
     elif args.command == "inspect":
         cmd_inspect(args)
+    elif args.command == "guardrails-test":
+        cmd_guardrails_test(args)
+    elif args.command == "guardrails-scan-pii":
+        cmd_guardrails_scan_pii(args)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,7 @@ class AuditReport:
     report_path: Path
     json_report_path: Path
     samples_evaluated: int
+    pdf_report_path: Path | None = None
 
 
 def _create_judge(model: str | None) -> JudgeProvider:
@@ -136,10 +137,17 @@ class AuditOrchestrator:
                 passed=evaluation.passed,
             ))
 
+            # 8. Generate PDF (optional)
+            pdf_report_path: Path | None = None
+            if self.config.generate_pdf:
+                from rag_forge_evaluator.report.pdf import PDFGenerator
+                pdf_report_path = PDFGenerator().generate(report_path)
+
             return AuditReport(
                 evaluation=evaluation,
                 rmm_level=rmm_level,
                 report_path=report_path,
                 json_report_path=json_report_path,
                 samples_evaluated=evaluation.samples_evaluated,
+                pdf_report_path=pdf_report_path,
             )

@@ -14,8 +14,12 @@ class PDFGenerator:
             Path to the generated PDF file (same name, .pdf extension).
 
         Raises:
+            FileNotFoundError: If the HTML report file does not exist.
             ImportError: If Playwright is not installed.
         """
+        if not html_path.exists():
+            raise FileNotFoundError(f"HTML report not found: {html_path}")
+
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:

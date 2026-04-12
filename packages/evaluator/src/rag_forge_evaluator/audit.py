@@ -128,7 +128,13 @@ class AuditOrchestrator:
                 if span is not None:
                     span.set_attribute("report_path", str(report_path))
 
-            # 7. Append to history
+            # 7. Generate PDF (optional)
+            pdf_report_path: Path | None = None
+            if self.config.generate_pdf:
+                from rag_forge_evaluator.report.pdf import PDFGenerator
+                pdf_report_path = PDFGenerator().generate(report_path)
+
+            # 8. Append to history (after all reports succeed)
             history.append(AuditHistoryEntry(
                 timestamp=datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 metrics=metric_map,
@@ -136,12 +142,6 @@ class AuditOrchestrator:
                 overall_score=evaluation.overall_score,
                 passed=evaluation.passed,
             ))
-
-            # 8. Generate PDF (optional)
-            pdf_report_path: Path | None = None
-            if self.config.generate_pdf:
-                from rag_forge_evaluator.report.pdf import PDFGenerator
-                pdf_report_path = PDFGenerator().generate(report_path)
 
             return AuditReport(
                 evaluation=evaluation,

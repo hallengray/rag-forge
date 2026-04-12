@@ -105,5 +105,5 @@ class QdrantStore:
             payload.pop("item_id", None)
             meta = {k: v for k, v in payload.items() if isinstance(v, (str, int, float))}
             return VectorItem(id=item_id, vector=[], text=text, metadata=meta)
-        except Exception:
+        except (ValueError, KeyError):
             return None

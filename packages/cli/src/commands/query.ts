@@ -57,6 +57,7 @@ export function registerQueryCommand(program: Command): void {
     .option("--cache", "Enable semantic query caching")
     .option("--cache-ttl <seconds>", "Cache TTL in seconds", "3600")
     .option("--cache-similarity <threshold>", "Cosine similarity threshold", "0.95")
+    .option("--agent-mode", "Enable multi-query decomposition")
     .description("Execute a RAG query against the indexed pipeline")
     .action(
       async (
@@ -77,6 +78,7 @@ export function registerQueryCommand(program: Command): void {
           cache?: boolean;
           cacheTtl: string;
           cacheSimilarity: string;
+          agentMode?: boolean;
         },
       ) => {
         const spinner = ora("Querying pipeline...").start();
@@ -118,6 +120,9 @@ export function registerQueryCommand(program: Command): void {
           }
           args.push("--cache-ttl", options.cacheTtl);
           args.push("--cache-similarity", options.cacheSimilarity);
+          if (options.agentMode) {
+            args.push("--agent-mode");
+          }
 
           const result = await runPythonModule({
             module: "rag_forge_core.cli",

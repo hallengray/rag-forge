@@ -18,6 +18,7 @@ from rag_forge_core.embedding.mock_embedder import MockEmbedder
 from rag_forge_core.generation.base import GenerationProvider
 from rag_forge_core.ingestion.pipeline import IngestionPipeline
 from rag_forge_core.parsing.directory import DirectoryParser
+from rag_forge_core.query.agentic import AgenticQueryEngine
 from rag_forge_core.retrieval.dense import DenseRetriever
 from rag_forge_core.retrieval.hybrid import HybridRetriever
 from rag_forge_core.retrieval.reranker import RerankerProtocol
@@ -250,15 +251,28 @@ def cmd_query(args: argparse.Namespace) -> None:
     tracing.enable()
     tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
-    engine = QueryEngine(
-        retriever=retriever,
-        generator=_create_generator(generator_provider),
-        top_k=top_k,
-        input_guard=input_guard,
-        output_guard=output_guard,
-        tracer=tracer,
-        cache=cache,
-    )
+    _generator = _create_generator(generator_provider)
+    engine: QueryEngine | AgenticQueryEngine
+    if args.agent_mode:
+        engine = AgenticQueryEngine(
+            retriever=retriever,
+            generator=_generator,
+            top_k=top_k,
+            input_guard=input_guard,
+            output_guard=output_guard,
+            tracer=tracer,
+            cache=cache,
+        )
+    else:
+        engine = QueryEngine(
+            retriever=retriever,
+            generator=_generator,
+            top_k=top_k,
+            input_guard=input_guard,
+            output_guard=output_guard,
+            tracer=tracer,
+            cache=cache,
+        )
     result = engine.query(args.question)
     output = {
         "answer": result.answer,
@@ -376,6 +390,7 @@ def main() -> None:
     query_parser.add_argument("--cache", action="store_true", help="Enable semantic query caching")
     query_parser.add_argument("--cache-ttl", default="3600", help="Cache TTL in seconds")
     query_parser.add_argument("--cache-similarity", default="0.95", help="Cosine similarity threshold")
+    query_parser.add_argument("--agent-mode", action="store_true", help="Enable multi-query decomposition for complex questions")
 
     status_parser = subparsers.add_parser("status", help="Check pipeline status")
     status_parser.add_argument("--collection", help="Collection name", default="rag-forge")

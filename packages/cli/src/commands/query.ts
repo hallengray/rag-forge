@@ -15,6 +15,8 @@ interface QueryResult {
   model_used: string;
   chunks_retrieved: number;
   sources: QuerySource[];
+  blocked: boolean;
+  blocked_reason: string | null;
 }
 
 export function registerQueryCommand(program: Command): void {
@@ -44,6 +46,14 @@ export function registerQueryCommand(program: Command): void {
       "--sparse-index-path <path>",
       "Path to BM25 sparse index",
     )
+    .option("--input-guard", "Enable input security guard")
+    .option("--output-guard", "Enable output security guard")
+    .option(
+      "--faithfulness-threshold <number>",
+      "Faithfulness score threshold (0.0-1.0)",
+      "0.85",
+    )
+    .option("--rate-limit <number>", "Max queries per minute", "60")
     .description("Execute a RAG query against the indexed pipeline")
     .action(
       async (
@@ -57,6 +67,10 @@ export function registerQueryCommand(program: Command): void {
           alpha: string;
           reranker: string;
           sparseIndexPath?: string;
+          inputGuard?: boolean;
+          outputGuard?: boolean;
+          faithfulnessThreshold: string;
+          rateLimit: string;
         },
       ) => {
         const spinner = ora("Querying pipeline...").start();
@@ -85,6 +99,14 @@ export function registerQueryCommand(program: Command): void {
           if (options.sparseIndexPath) {
             args.push("--sparse-index-path", options.sparseIndexPath);
           }
+          if (options.inputGuard) {
+            args.push("--input-guard");
+          }
+          if (options.outputGuard) {
+            args.push("--output-guard");
+          }
+          args.push("--faithfulness-threshold", options.faithfulnessThreshold);
+          args.push("--rate-limit", options.rateLimit);
 
           const result = await runPythonModule({
             module: "rag_forge_core.cli",
@@ -99,6 +121,11 @@ export function registerQueryCommand(program: Command): void {
 
           const output: QueryResult = JSON.parse(result.stdout);
           spinner.succeed(`Answer (${output.model_used}):`);
+
+          if (output.blocked) {
+            logger.warn(`Query blocked: ${output.blocked_reason ?? "Unknown reason"}`);
+            return;
+          }
 
           console.log("");
           console.log(output.answer);

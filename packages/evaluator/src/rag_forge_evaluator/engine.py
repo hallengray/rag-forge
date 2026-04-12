@@ -1,7 +1,7 @@
 """Abstract base for evaluation engines."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -27,6 +27,17 @@ class MetricResult:
 
 
 @dataclass
+class SampleResult:
+    """Evaluation results for a single sample."""
+
+    query: str
+    response: str
+    metrics: dict[str, float]
+    worst_metric: str
+    root_cause: str
+
+
+@dataclass
 class EvaluationResult:
     """Complete evaluation result across all metrics."""
 
@@ -34,6 +45,7 @@ class EvaluationResult:
     overall_score: float
     samples_evaluated: int
     passed: bool
+    sample_results: list[SampleResult] = field(default_factory=list)
 
 
 class EvaluatorInterface(ABC):

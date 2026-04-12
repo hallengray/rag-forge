@@ -22,6 +22,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         judge_model=args.judge or config_data.get("judge_model", "mock"),
         output_dir=Path(args.output),
         thresholds=config_data.get("thresholds"),
+        evaluator_engine=args.evaluator,
     )
 
     report = AuditOrchestrator(config).run()
@@ -38,6 +39,8 @@ def cmd_audit(args: argparse.Namespace) -> None:
             for m in report.evaluation.metrics
         ],
         "report_path": str(report.report_path),
+        "json_report_path": str(report.json_report_path),
+        "evaluator_engine": config.evaluator_engine,
     }
     json.dump(output, sys.stdout)
 
@@ -53,6 +56,11 @@ def main() -> None:
     audit_parser.add_argument("--judge", help="Judge model: mock | claude | openai")
     audit_parser.add_argument("--output", default="./reports", help="Output directory")
     audit_parser.add_argument("--config-json", help="JSON config from TS CLI")
+    audit_parser.add_argument(
+        "--evaluator", default="llm-judge",
+        choices=["llm-judge", "ragas", "deepeval"],
+        help="Evaluator engine: llm-judge | ragas | deepeval",
+    )
 
     args = parser.parse_args()
     if args.command == "audit":

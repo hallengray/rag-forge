@@ -21,6 +21,12 @@ from rag_forge_core.retrieval.dense import DenseRetriever
 from rag_forge_core.retrieval.hybrid import HybridRetriever
 from rag_forge_core.retrieval.reranker import RerankerProtocol
 from rag_forge_core.retrieval.sparse import SparseRetriever
+from rag_forge_core.security.faithfulness import FaithfulnessChecker
+from rag_forge_core.security.injection import PromptInjectionClassifier, PromptInjectionDetector
+from rag_forge_core.security.input_guard import InputGuard
+from rag_forge_core.security.output_guard import OutputGuard
+from rag_forge_core.security.pii import RegexPIIScanner
+from rag_forge_core.security.rate_limiter import RateLimiter
 from rag_forge_core.storage.qdrant import QdrantStore
 
 
@@ -192,12 +198,48 @@ def cmd_query(args: argparse.Namespace) -> None:
         )
         sys.exit(1)
 
-    engine = QueryEngine(retriever=retriever, generator=_create_generator(generator_provider), top_k=top_k)
+    # Build guards if enabled
+    input_guard = None
+    if args.input_guard:
+        injection_classifier = None
+        if generator_provider != "mock":
+            injection_classifier = PromptInjectionClassifier(
+                generator=_create_generator(generator_provider)
+            )
+        input_guard = InputGuard(
+            injection_detector=PromptInjectionDetector(),
+            injection_classifier=injection_classifier,
+            pii_scanner=RegexPIIScanner(),
+            rate_limiter=RateLimiter(
+                max_queries=int(args.rate_limit),
+                window_seconds=60,
+            ),
+        )
+
+    output_guard = None
+    if args.output_guard:
+        output_guard = OutputGuard(
+            faithfulness_checker=FaithfulnessChecker(
+                generator=_create_generator(generator_provider),
+                threshold=float(args.faithfulness_threshold),
+            ),
+            pii_scanner=RegexPIIScanner(),
+        )
+
+    engine = QueryEngine(
+        retriever=retriever,
+        generator=_create_generator(generator_provider),
+        top_k=top_k,
+        input_guard=input_guard,
+        output_guard=output_guard,
+    )
     result = engine.query(args.question)
     output = {
         "answer": result.answer,
         "model_used": result.model_used,
         "chunks_retrieved": result.chunks_retrieved,
+        "blocked": result.blocked,
+        "blocked_reason": result.blocked_reason,
         "sources": [
             {
                 "text": s.text[:200],
@@ -245,6 +287,20 @@ def main() -> None:
         "--reranker", default="none", help="Reranker: none | cohere | bge-local"
     )
     query_parser.add_argument("--sparse-index-path", help="Path to BM25 sparse index")
+    query_parser.add_argument(
+        "--input-guard", action="store_true", help="Enable input security guard"
+    )
+    query_parser.add_argument(
+        "--output-guard", action="store_true", help="Enable output security guard"
+    )
+    query_parser.add_argument(
+        "--faithfulness-threshold", default="0.85",
+        help="Faithfulness score threshold (0.0-1.0)",
+    )
+    query_parser.add_argument(
+        "--rate-limit", default="60",
+        help="Max queries per minute",
+    )
 
     args = parser.parse_args()
     if args.command == "index":

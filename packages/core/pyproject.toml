@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 local = ["sentence-transformers>=3.0"]
 cohere = ["cohere>=5.0"]
+presidio = ["presidio-analyzer>=2.2"]
 
 [build-system]
 requires = ["hatchling"]

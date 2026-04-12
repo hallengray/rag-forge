@@ -99,7 +99,7 @@ class QueryEngine:
             if not output_result.passed:
                 return QueryResult(
                     answer="",
-                    sources=results,
+                    sources=[],
                     model_used=self._generator.model_name(),
                     chunks_retrieved=len(results),
                     blocked=True,

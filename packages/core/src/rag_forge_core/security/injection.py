@@ -82,9 +82,9 @@ class PromptInjectionClassifier:
                 confidence=float(parsed.get("confidence", 0.0)),
                 pattern_matched=parsed.get("reason"),
             )
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        except Exception:
             logger.warning(
-                "Injection classifier returned malformed response, defaulting to safe",
+                "Injection classifier failed, defaulting to safe",
                 exc_info=True,
             )
             return InjectionCheckResult(is_injection=False, confidence=0.0)

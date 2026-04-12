@@ -39,7 +39,21 @@ class InputGuard:
         self._rate_limiter = rate_limiter
 
     def check(self, query: str, user_id: str = "default") -> GuardResult:
-        """Run all configured input checks in order."""
+        """Run all configured input checks in order.
+
+        Check order: rate limiter -> injection detector -> injection classifier -> PII scanner.
+        Rate limiting runs first to prevent abusive callers from spamming blocked payloads
+        without consuming quota.
+        """
+        if self._rate_limiter is not None:
+            rate_result = self._rate_limiter.check(user_id)
+            if not rate_result.allowed:
+                return GuardResult(
+                    passed=False,
+                    reason=f"Rate limit exceeded: {rate_result.current_count}/{rate_result.limit} queries in {rate_result.window_seconds}s",
+                    blocked_by="rate_limiter",
+                )
+
         if self._injection_detector is not None:
             result = self._injection_detector.check(query)
             if result.is_injection:
@@ -66,15 +80,6 @@ class InputGuard:
                     passed=False,
                     reason=f"PII detected in query: {entity_types}",
                     blocked_by="pii_scanner",
-                )
-
-        if self._rate_limiter is not None:
-            rate_result = self._rate_limiter.check(user_id)
-            if not rate_result.allowed:
-                return GuardResult(
-                    passed=False,
-                    reason=f"Rate limit exceeded: {rate_result.current_count}/{rate_result.limit} queries in {rate_result.window_seconds}s",
-                    blocked_by="rate_limiter",
                 )
 
         return GuardResult(passed=True)

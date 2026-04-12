@@ -34,10 +34,11 @@ class TestFaithfulnessChecker:
         assert not result.passed
         assert result.score == 0.3
 
-    def test_malformed_response_defaults_to_pass(self) -> None:
+    def test_malformed_response_fails_closed(self) -> None:
         checker = FaithfulnessChecker(generator=MockGenerator())
         result = checker.check("response", ["context"])
-        assert result.passed
+        assert not result.passed
+        assert result.score == 0.0
 
     def test_custom_threshold(self) -> None:
         checker = FaithfulnessChecker(

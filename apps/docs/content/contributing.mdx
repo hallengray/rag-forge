@@ -1,0 +1,35 @@
+---
+title: Contributing
+---
+
+# Contributing
+
+> Thanks for considering a contribution.
+
+RAG-Forge is a polyglot monorepo — TypeScript for the CLI and MCP server, Python for the RAG pipeline and evaluator.
+
+## Local setup
+
+```bash
+git clone https://github.com/hallengray/rag-forge.git
+cd rag-forge
+pnpm install
+uv sync --all-packages
+pnpm run build
+pnpm run test
+```
+
+## Code standards
+
+- **TypeScript:** strict mode, no `any`, ESLint + Prettier clean
+- **Python:** type hints on everything, Ruff + mypy clean
+- Every PR must pass `pnpm run typecheck && pnpm run lint && pnpm run test`
+
+## Where to start
+
+- Good first issues: https://github.com/hallengray/rag-forge/labels/good%20first%20issue
+- For larger changes, open an issue first so we can align on approach.
+
+## Full guidelines
+
+See the root [`CONTRIBUTING.md`](https://github.com/hallengray/rag-forge/blob/main/CONTRIBUTING.md) for the complete contributor guide, including commit conventions, plugin authorship, and the PR review process.

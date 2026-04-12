@@ -1,0 +1,77 @@
+---
+title: MCP Server
+---
+
+# MCP Server
+
+> Expose RAG-Forge to Claude Desktop, Cursor, and other Model Context Protocol clients.
+
+## What you get
+
+The RAG-Forge MCP server wraps your indexed pipeline as a set of tools any MCP client can call. The server registers five tools:
+
+- **`rag_query`** — Execute a RAG query against the indexed pipeline and return retrieved context with an answer
+- **`rag_audit`** — Run the evaluation suite against a golden set and return scored results
+- **`rag_status`** — Return pipeline health metrics and cache statistics (no arguments required)
+- **`rag_ingest`** — Index new documents into the pipeline
+- **`rag_inspect`** — Debug a specific chunk by ID, useful for tracing retrieval issues
+
+## Running the server
+
+`stdio` is the default transport and the right choice for local desktop clients:
+
+```bash
+rag-forge serve --mcp
+```
+
+For multi-client or networked deployments, use the HTTP transport. The default port is `3100`:
+
+```bash
+rag-forge serve --mcp --transport http --port 3100
+```
+
+You can pick any available port with `-p`:
+
+```bash
+rag-forge serve --mcp --transport http -p 3333
+```
+
+The HTTP transport uses Server-Sent Events. Each connection gets its own MCP server instance and session ID — multiple clients can connect concurrently without interfering. The `/health` endpoint reports the active session count.
+
+## Claude Desktop configuration
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "rag-forge": {
+      "command": "rag-forge",
+      "args": ["serve", "--mcp"]
+    }
+  }
+}
+```
+
+For HTTP mode, use the `url` field instead:
+
+```json
+{
+  "mcpServers": {
+    "rag-forge": {
+      "url": "http://localhost:3100/sse"
+    }
+  }
+}
+```
+
+## Transports
+
+| Transport | When to use |
+|-----------|-------------|
+| `stdio` (default) | Local desktop clients (Claude Desktop, Cursor) |
+| `http` | Multi-client or networked deployments |
+
+## Related
+
+- [`rag-forge serve`](/cli/serve) — the CLI entry point

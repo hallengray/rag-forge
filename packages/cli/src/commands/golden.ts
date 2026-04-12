@@ -73,8 +73,15 @@ export function registerGoldenCommand(program: Command): void {
           });
 
           if (result.exitCode !== 0) {
+            let errorMessage = result.stderr || "Unknown error";
+            try {
+              const parsed = JSON.parse(result.stdout) as Partial<GoldenAddResult>;
+              if (parsed.error) errorMessage = parsed.error;
+            } catch {
+              // stdout is not JSON — use stderr
+            }
             spinner.fail("Failed to add to golden set");
-            logger.error(result.stderr || "Unknown error");
+            logger.error(errorMessage);
             process.exit(1);
           }
 
@@ -114,8 +121,15 @@ export function registerGoldenCommand(program: Command): void {
           });
 
           if (result.exitCode !== 0) {
+            let errorMessage = result.stderr || "Unknown error";
+            try {
+              const parsed = JSON.parse(result.stdout) as Partial<GoldenValidateResult>;
+              if (parsed.error) errorMessage = parsed.error;
+            } catch {
+              // stdout is not JSON — use stderr
+            }
             spinner.fail("Validation failed");
-            logger.error(result.stderr || "Unknown error");
+            logger.error(errorMessage);
             process.exit(1);
           }
 

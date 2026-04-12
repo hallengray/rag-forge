@@ -108,6 +108,10 @@ class GoldenSet:
         Returns:
             Number of entries added.
         """
+        if sample_size <= 0:
+            msg = "sample_size must be >= 1"
+            raise ValueError(msg)
+
         path = Path(jsonl_path)
         lines: list[dict[str, str | list[str]]] = []
 
@@ -156,9 +160,10 @@ class GoldenSet:
                 errors.append(f"Duplicate query found: '{q}'")
             seen.add(q)
 
-        # Missing keywords
+        # Missing or blank keywords
         for i, entry in enumerate(self.entries):
-            if not entry.expected_answer_keywords:
+            non_blank = [k for k in entry.expected_answer_keywords if k.strip()]
+            if not non_blank:
                 errors.append(
                     f"Entry {i} ('{entry.query[:50]}...') has no expected_answer_keywords"
                 )

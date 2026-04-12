@@ -14,6 +14,7 @@ dependencies = [
     "openai>=1.30",
     "qdrant-client>=1.9",
     "bm25s>=0.2",
+    "opentelemetry-api>=1.20",
 ]
 
 [project.optional-dependencies]

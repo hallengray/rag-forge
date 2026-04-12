@@ -40,7 +40,7 @@ A static marketing landing page for RAG-Forge that explains the product, drives 
 
 The site lives in a new `apps/` workspace alongside the existing `packages/`. The Turborepo monorepo gets a new top-level workspace.
 
-```
+```text
 RAGforge/
 ├── apps/
 │   └── site/                    # Next.js 16 landing page
@@ -262,7 +262,7 @@ export default config;
 {
   "build": "next build",
   "dev": "next dev",
-  "lint": "next lint",
+  "lint": "eslint .",
   "typecheck": "tsc --noEmit"
 }
 ```

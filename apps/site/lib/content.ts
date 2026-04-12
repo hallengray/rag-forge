@@ -1,3 +1,5 @@
+export const CONTENT_LAST_VERIFIED = "2026-04-12";
+
 export const SITE = {
   name: "RAG-Forge",
   url: "https://rag-forge.vercel.app",
@@ -24,23 +26,43 @@ export const HERO = {
   installCommand: "npm install -g rag-forge",
 } as const;
 
-export const PROBLEMS = [
+export type Citation = {
+  url: string;
+  retrieved: string;
+} | null;
+
+export type ProblemStat = {
+  stat: string;
+  label: string;
+  source: string;
+  citation: Citation;
+};
+
+export const PROBLEMS: readonly ProblemStat[] = [
   {
     stat: "73%",
     label: "of enterprise RAG systems are over budget",
     source: "Industry analysis, 2026",
+    // TODO: add source
+    citation: null,
   },
   {
     stat: "40%",
     label: "of RAG deployments lack systematic evaluation",
     source: "Industry surveys, early 2026",
+    // TODO: add source
+    citation: null,
   },
   {
     stat: "32%",
     label: "cite quality as the #1 deployment barrier",
     source: "LangChain State of AI Agents 2026",
+    citation: {
+      url: "https://www.langchain.com/stateofaiagents",
+      retrieved: "2026-04-12",
+    },
   },
-] as const;
+];
 
 export const PILLARS = [
   {
@@ -133,6 +155,23 @@ rag-forge serve --mcp --port 3100
 
 # Or via stdio for direct integration
 rag-forge serve --mcp --stdio`;
+
+export const COMPARISON_LAST_VERIFIED = "2026-04";
+
+export const COMPARISON_CITATIONS: Readonly<Record<string, Citation>> = {
+  langchain: {
+    url: "https://python.langchain.com/docs/introduction/",
+    retrieved: "2026-04-12",
+  },
+  llamaindex: {
+    url: "https://docs.llamaindex.ai/en/stable/",
+    retrieved: "2026-04-12",
+  },
+  ragas: {
+    url: "https://docs.ragas.io/en/stable/",
+    retrieved: "2026-04-12",
+  },
+};
 
 export const COMPARISON = {
   rows: [

@@ -14,7 +14,7 @@
 
 ## File Structure (Reference)
 
-```
+```text
 apps/
 └── site/
     ├── app/
@@ -89,7 +89,7 @@ packages:
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

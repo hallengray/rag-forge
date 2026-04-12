@@ -1,14 +1,53 @@
 import { Check, Minus, X } from "lucide-react";
-import { COMPARISON } from "@/lib/content";
+import { COMPARISON, COMPARISON_LAST_VERIFIED } from "@/lib/content";
 
 function Cell({ value }: { value: boolean | "partial" }) {
   if (value === true) {
-    return <Check className="h-5 w-5 text-[var(--color-accent)] mx-auto" />;
+    return (
+      <span className="inline-flex items-center justify-center">
+        <Check className="h-5 w-5 text-[var(--color-accent)] mx-auto" aria-hidden="true" />
+        <span className="sr-only">yes</span>
+      </span>
+    );
   }
   if (value === "partial") {
-    return <Minus className="h-5 w-5 text-yellow-500 mx-auto" />;
+    return (
+      <span className="inline-flex items-center justify-center">
+        <Minus className="h-5 w-5 text-yellow-500 mx-auto" aria-hidden="true" />
+        <span className="sr-only">partial</span>
+      </span>
+    );
   }
-  return <X className="h-5 w-5 text-[var(--color-muted)] mx-auto opacity-50" />;
+  return (
+    <span className="inline-flex items-center justify-center">
+      <X
+        className="h-5 w-5 text-[var(--color-muted)] mx-auto opacity-50"
+        aria-hidden="true"
+      />
+      <span className="sr-only">no</span>
+    </span>
+  );
+}
+
+function formatLastVerified(value: string): string {
+  const [year, month] = value.split("-");
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const monthIndex = Number.parseInt(month ?? "", 10) - 1;
+  const monthName = monthNames[monthIndex] ?? month;
+  return `${monthName} ${year}`;
 }
 
 export function ComparisonTable() {
@@ -38,7 +77,7 @@ export function ComparisonTable() {
             </thead>
             <tbody>
               {COMPARISON.rows.map((row, i) => (
-                <tr key={row} className="border-b border-[var(--color-border)]">
+                <tr key={`${i}-${row}`} className="border-b border-[var(--color-border)]">
                   <td className="py-4 px-4">{row}</td>
                   <td className="py-4 px-4">
                     <Cell value={COMPARISON.values["rag-forge"][i]} />
@@ -57,7 +96,8 @@ export function ComparisonTable() {
             </tbody>
           </table>
           <p className="mt-6 text-xs text-[var(--color-muted)] font-mono text-center">
-            Comparison based on publicly available features as of April 2026.
+            Comparison based on publicly available features as of{" "}
+            {formatLastVerified(COMPARISON_LAST_VERIFIED)}.
           </p>
         </div>
       </div>

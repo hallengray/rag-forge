@@ -1,5 +1,7 @@
 import { SITE } from "@/lib/content";
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export function Footer() {
   return (
     <footer className="border-t border-[var(--color-border)] py-16">
@@ -66,12 +68,12 @@ export function Footer() {
             <ul className="mt-4 space-y-2 text-sm text-[var(--color-muted)]">
               <li>License: MIT</li>
               <li>Author: {SITE.author}</li>
-              <li>© 2026</li>
+              <li>© {CURRENT_YEAR}</li>
             </ul>
           </div>
         </div>
         <div className="mt-12 pt-8 border-t border-[var(--color-border)] text-center text-xs font-mono text-[var(--color-muted)]">
-          MIT licensed · © 2026 {SITE.author}
+          MIT licensed · © {CURRENT_YEAR} {SITE.author}
         </div>
       </div>
     </footer>

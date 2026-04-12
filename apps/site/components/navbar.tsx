@@ -34,9 +34,10 @@ export function Navbar() {
             href={SITE.github}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={`View RAG-Forge on GitHub (${TRUST.githubStars} stars)`}
             className="hidden sm:inline-flex items-center gap-2 px-3 h-9 rounded-md border border-[var(--color-border)] hover:bg-[var(--color-card)] text-sm font-mono"
           >
-            <Github className="h-4 w-4" />
+            <Github className="h-4 w-4" aria-hidden="true" />
             <span>{TRUST.githubStars}</span>
           </a>
           <ThemeToggle />

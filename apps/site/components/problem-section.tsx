@@ -18,7 +18,7 @@ export function ProblemSection() {
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
           {PROBLEMS.map((problem) => (
-            <Card key={problem.stat}>
+            <Card key={`${problem.stat}-${problem.label}`}>
               <div className="font-mono text-5xl font-bold text-[var(--color-accent)]">
                 {problem.stat}
               </div>

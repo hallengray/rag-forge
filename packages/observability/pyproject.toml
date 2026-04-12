@@ -4,12 +4,30 @@ version = "0.1.0"
 description = "Observability stack: OpenTelemetry tracing, Langfuse integration, and drift detection"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [{ name = "Femi Adedayo" }]
+keywords = ["rag", "observability", "opentelemetry", "drift-detection", "tracing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+]
+readme = "README.md"
 dependencies = [
     "pydantic>=2.0",
     "opentelemetry-api>=1.20",
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
 ]
+
+[project.urls]
+Homepage = "https://github.com/hallengray/rag-forge"
+Repository = "https://github.com/hallengray/rag-forge"
+Issues = "https://github.com/hallengray/rag-forge/issues"
+Documentation = "https://github.com/hallengray/rag-forge#readme"
 
 [build-system]
 requires = ["hatchling"]

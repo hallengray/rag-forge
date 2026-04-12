@@ -102,18 +102,21 @@ def cmd_parse(args: argparse.Namespace) -> None:
         parser = DirectoryParser()
         documents, errors = parser.parse_directory(source)
 
-        files_info = []
+        files_info: list[dict[str, str | int]] = []
+        total_characters = 0
         for doc in documents:
+            char_count = len(doc.text)
             files_info.append({
                 "path": doc.source_path,
-                "characters": len(doc.text),
+                "characters": char_count,
             })
+            total_characters += char_count
 
         output = {
             "success": True,
             "files_found": len(documents),
             "files": files_info,
-            "total_characters": sum(len(doc.text) for doc in documents),
+            "total_characters": total_characters,
             "parse_errors": errors,
         }
     except Exception as e:

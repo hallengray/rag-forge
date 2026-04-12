@@ -1,0 +1,183 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write  # Required for PyPI Trusted Publishers OIDC
+
+jobs:
+  verify:
+    name: Verify Build & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies
+        run: uv sync --all-packages
+
+      - name: Validate release tag matches all package versions
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, sys, tomllib
+
+          expected = os.environ["RELEASE_TAG"].lstrip("v")
+          mismatches = []
+
+          json_files = [
+              "packages/cli/package.json",
+              "packages/mcp/package.json",
+              "packages/shared/package.json",
+          ]
+          toml_files = [
+              "packages/core/pyproject.toml",
+              "packages/evaluator/pyproject.toml",
+              "packages/observability/pyproject.toml",
+          ]
+
+          for p in json_files:
+              data = json.loads(pathlib.Path(p).read_text())
+              found = data.get("version")
+              if found != expected:
+                  mismatches.append((p, found))
+
+          for p in toml_files:
+              data = tomllib.loads(pathlib.Path(p).read_text())
+              found = data.get("project", {}).get("version")
+              if found != expected:
+                  mismatches.append((p, found))
+
+          if mismatches:
+              print(f"Release tag version: {expected}")
+              print("Version mismatches:")
+              for p, found in mismatches:
+                  print(f"  {p}: {found}")
+              sys.exit(1)
+          print(f"All package versions match release tag {expected}.")
+          PY
+
+      - name: Build TypeScript packages
+        run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Run tests
+        run: pnpm run test
+
+  publish-npm:
+    name: Publish to npm
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm run build
+
+      - name: Publish @rag-forge/shared
+        working-directory: packages/shared
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @rag-forge/mcp
+        working-directory: packages/mcp
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish rag-forge (CLI)
+        working-directory: packages/cli
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build rag-forge-core
+        working-directory: packages/core
+        run: uv build
+
+      - name: Publish rag-forge-core to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/core/dist/
+
+      - name: Build rag-forge-evaluator
+        working-directory: packages/evaluator
+        run: uv build
+
+      - name: Publish rag-forge-evaluator to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/evaluator/dist/
+
+      - name: Build rag-forge-observability
+        working-directory: packages/observability
+        run: uv build
+
+      - name: Publish rag-forge-observability to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/observability/dist/

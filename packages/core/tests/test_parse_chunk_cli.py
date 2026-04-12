@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from rag_forge_core.parsing.directory import DirectoryParser
 from rag_forge_core.chunking.config import ChunkConfig
 from rag_forge_core.chunking.recursive import RecursiveChunker
+from rag_forge_core.parsing.directory import DirectoryParser
 
 
 class TestParsePreview:
@@ -18,7 +18,7 @@ class TestParsePreview:
 
     def test_parse_empty_directory(self, tmp_path: Path) -> None:
         parser = DirectoryParser()
-        results, errors = parser.parse_directory(tmp_path)
+        results, _errors = parser.parse_directory(tmp_path)
         assert len(results) == 0
 
 

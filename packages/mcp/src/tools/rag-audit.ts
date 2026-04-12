@@ -24,7 +24,7 @@ export async function handleRagAudit(input: RagAuditInput): Promise<string> {
   });
 
   if (result.exitCode !== 0) {
-    return JSON.stringify({
+    return result.stdout || JSON.stringify({
       status: "error",
       message: result.stderr || "Audit failed",
     });

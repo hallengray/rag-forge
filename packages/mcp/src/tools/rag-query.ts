@@ -26,7 +26,7 @@ export async function handleRagQuery(input: RagQueryInput): Promise<string> {
   });
 
   if (result.exitCode !== 0) {
-    return JSON.stringify({
+    return result.stdout || JSON.stringify({
       status: "error",
       message: result.stderr || "Query failed",
     });

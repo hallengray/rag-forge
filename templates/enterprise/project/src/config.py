@@ -22,6 +22,7 @@ class PipelineConfig:
     # Reranking
     reranker: str = "cohere"
     cohere_model: str = "rerank-v3.5"
+    cohere_api_key: str | None = None
 
     # Enrichment
     enrich: bool = True

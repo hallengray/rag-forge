@@ -10,6 +10,12 @@ A production-grade RAG pipeline with hybrid retrieval, security guards (InputGua
 - **CI/CD gate**: GitHub Actions workflow that blocks merges when faithfulness drops below threshold
 - **Evaluation**: Pre-configured golden set, quality thresholds, and audit reports
 
+## Prerequisites
+
+Set your API keys as environment variables:
+- `COHERE_API_KEY` — for Cohere reranking (optional)
+- `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` — for LLM generation and evaluation
+
 ## Quick Start
 
 1. Install dependencies: `uv sync`

@@ -1,11 +1,16 @@
 """DeepEval framework evaluator wrapper. Requires: pip install rag-forge-evaluator[deepeval]"""
 
+from rag_forge_evaluator.engine import (
+    EvaluationResult,
+    EvaluationSample,
+    EvaluatorInterface,
+    MetricResult,
+)
+
 try:
     import deepeval  # noqa: F401
-except ImportError:
-    raise ImportError("DeepEval is not installed. Install with: pip install rag-forge-evaluator[deepeval]")
-
-from rag_forge_evaluator.engine import EvaluationResult, EvaluationSample, EvaluatorInterface, MetricResult
+except ImportError as e:
+    raise ImportError("DeepEval is not installed. Install with: pip install rag-forge-evaluator[deepeval]") from e
 
 
 class DeepEvalEvaluator(EvaluatorInterface):
@@ -14,7 +19,12 @@ class DeepEvalEvaluator(EvaluatorInterface):
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
         from deepeval import evaluate as deepeval_evaluate
-        from deepeval.metrics import AnswerRelevancyMetric, ContextualRelevancyMetric, FaithfulnessMetric, HallucinationMetric
+        from deepeval.metrics import (
+            AnswerRelevancyMetric,
+            ContextualRelevancyMetric,
+            FaithfulnessMetric,
+            HallucinationMetric,
+        )
         from deepeval.test_case import LLMTestCase
 
         test_cases = [

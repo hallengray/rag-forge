@@ -2,7 +2,6 @@
 
 import json
 import tempfile
-from pathlib import Path
 
 from rag_forge_evaluator.engine import EvaluationResult, MetricResult, SampleResult
 from rag_forge_evaluator.maturity import RMMLevel

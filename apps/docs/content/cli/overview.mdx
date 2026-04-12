@@ -1,0 +1,41 @@
+---
+title: CLI Overview
+---
+
+# CLI Overview
+
+> Every `rag-forge` command at a glance.
+
+RAG-Forge's CLI is organized around pipeline stages. Most projects need only a handful of commands to get going: `init`, `index`, `query`, `audit`. The rest are there when you need them.
+
+## Project lifecycle
+
+| Command | Purpose |
+|---------|---------|
+| [`init`](/cli/init) | Scaffold a new RAG-Forge project from a template |
+| [`add`](/cli/add) | Add an optional feature module as editable source code (guardrails, caching, reranking, and more) |
+| [`parse`](/cli/parse) | Preview document extraction without indexing |
+| [`chunk`](/cli/chunk) | Preview chunking output and stats without indexing |
+| [`index`](/cli/index-command) | Embed chunks and write to the vector store |
+| [`query`](/cli/query) | Run a retrieval + generation query against the indexed pipeline |
+| [`inspect`](/cli/inspect) | Inspect a specific indexed chunk by ID |
+
+## Evaluation and quality
+
+| Command | Purpose |
+|---------|---------|
+| [`audit`](/cli/audit) | Run evaluation against telemetry or a golden set and score against RMM |
+| [`assess`](/cli/assess) | One-shot assessment of an existing pipeline |
+| [`golden`](/cli/golden) | Manage the golden question/answer set |
+| [`drift`](/cli/drift) | Detect retrieval drift against a baseline |
+| [`report`](/cli/report) | Generate a pipeline health HTML report |
+
+## Operations
+
+| Command | Purpose |
+|---------|---------|
+| [`cost`](/cli/cost) | Track LLM and embedding spend |
+| [`cache`](/cli/cache) | Inspect the semantic cache |
+| [`guardrails`](/cli/guardrails) | Run guardrail tests and PII scans |
+| [`serve`](/cli/serve) | Run the MCP server |
+| [`n8n`](/cli/n8n) | Export a project as an n8n workflow |

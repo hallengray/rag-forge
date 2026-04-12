@@ -1,0 +1,74 @@
+---
+title: rag-forge index
+---
+
+# rag-forge index
+
+> Index documents into the vector store.
+
+## Synopsis
+
+```bash
+rag-forge index --source <dir> [options]
+```
+
+## Description
+
+`index` is the core ingestion command. It reads source documents from a directory, parses and chunks them, generates embeddings, and writes the resulting chunks into the vector store under the specified collection name.
+
+`--source` is required. Every other option has a default, so the minimal invocation is `rag-forge index --source ./docs`.
+
+By default the command uses the `mock` embedding provider so you can test the pipeline without an API key. Switch to `openai` or `local` for production use. The chunking strategy and chunk size mirror the options available in `chunk` — use `rag-forge chunk` first to validate your settings before running a full index.
+
+When `--enrich` is set, the command prepends a document-level summary to each chunk before embedding. This increases retrieval quality at the cost of additional LLM calls. `--enrichment-generator` selects which model performs the summarization. If `--strategy llm-driven` is set, `--chunking-generator` is required.
+
+The optional `--sparse-index-path` flag persists a BM25 sparse index to disk alongside the dense vector store, enabling hybrid retrieval in subsequent `query` calls.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-s, --source <dir>` | **required** | Source directory of documents to index |
+| `-c, --collection <name>` | `rag-forge` | Collection name in the vector store |
+| `-e, --embedding <provider>` | `mock` | Embedding provider: `openai` \| `local` \| `mock` |
+| `--strategy <name>` | `recursive` | Chunking strategy: `fixed` \| `recursive` \| `semantic` \| `structural` \| `llm-driven` |
+| `--chunking-generator <provider>` | — | Generator for LLM-driven chunking: `claude` \| `openai` \| `mock`. Required when `--strategy llm-driven` |
+| `--enrich` | — | Enable contextual enrichment (document summary prepending) |
+| `--enrichment-generator <provider>` | — | Generator for enrichment summaries: `claude` \| `openai` \| `mock`. Requires `--enrich` |
+| `--sparse-index-path <path>` | — | Path to persist BM25 sparse index |
+
+## Examples
+
+### Minimal indexing with mock embeddings
+
+```bash
+rag-forge index --source ./docs
+```
+
+### Production indexing with OpenAI embeddings
+
+```bash
+rag-forge index --source ./docs --embedding openai --collection my-project
+```
+
+### Hybrid retrieval setup (dense + sparse)
+
+```bash
+rag-forge index --source ./docs --embedding openai --sparse-index-path ./bm25.pkl
+```
+
+### LLM-driven chunking with contextual enrichment
+
+```bash
+rag-forge index --source ./docs \
+  --strategy llm-driven \
+  --chunking-generator claude \
+  --enrich \
+  --enrichment-generator claude
+```
+
+## Related commands
+
+- [`rag-forge chunk`](/cli/chunk) — preview chunking before indexing
+- [`rag-forge query`](/cli/query) — query the indexed pipeline
+- [`rag-forge inspect`](/cli/inspect) — inspect individual indexed chunks

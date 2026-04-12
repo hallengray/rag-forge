@@ -1,0 +1,67 @@
+---
+title: rag-forge audit
+---
+
+# rag-forge audit
+
+> Run evaluation on pipeline telemetry and generate an audit report.
+
+## Synopsis
+
+```bash
+rag-forge audit --input <file> | --golden-set <file> [options]
+```
+
+## Description
+
+`audit` evaluates your RAG pipeline's quality and produces a structured report. It requires at least one of `--input` (a JSONL file of captured telemetry) or `--golden-set` (a JSON file of ground-truth question/answer pairs). Both can be provided at the same time.
+
+The command delegates to the Python `rag_forge_evaluator.cli` module. It scores each sample across a set of metrics (faithfulness, relevance, answer completeness, and others depending on the evaluator engine) and maps the overall score to an RMM level (0–5). The RMM — RAG Maturity Model — gives you a single headline grade that indicates where your pipeline sits on the quality spectrum.
+
+Three evaluator engines are supported: `llm-judge` (default, uses a language model to score each metric), `ragas` (open-source evaluation framework), and `deepeval` (another evaluation framework). The `--judge` flag selects which model powers the `llm-judge` engine.
+
+On completion, `audit` saves an HTML report and a JSON report to the output directory. Pass `--pdf` to also render a PDF (requires Playwright to be installed).
+
+The golden set file for a scaffolded project lives at `eval/golden_set.json`.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-i, --input <file>` | — | Path to telemetry JSONL file. Either `--input` or `--golden-set` is required. |
+| `-g, --golden-set <file>` | — | Path to golden set JSON file. Either `--input` or `--golden-set` is required. |
+| `-j, --judge <model>` | `mock` | Judge model for `llm-judge` engine: `mock` \| `claude` \| `openai` |
+| `-o, --output <dir>` | `./reports` | Output directory for reports |
+| `--evaluator <engine>` | `llm-judge` | Evaluator engine: `llm-judge` \| `ragas` \| `deepeval` |
+| `--pdf` | — | Generate PDF report (requires Playwright) |
+
+## Examples
+
+### Audit against a golden set with mock judge
+
+```bash
+rag-forge audit --golden-set eval/golden_set.json
+```
+
+### Audit production telemetry with Claude as judge
+
+```bash
+rag-forge audit --input ./telemetry/pipeline.jsonl --judge claude --output ./reports/prod
+```
+
+### Use RAGAS as the evaluator engine
+
+```bash
+rag-forge audit --golden-set eval/golden_set.json --evaluator ragas
+```
+
+### Generate a PDF report
+
+```bash
+rag-forge audit --golden-set eval/golden_set.json --judge claude --pdf
+```
+
+## Related commands
+
+- [`rag-forge golden`](/cli/golden) — manage the golden question/answer set
+- [`rag-forge assess`](/cli/assess) — one-shot assessment without a full audit run

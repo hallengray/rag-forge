@@ -1,0 +1,91 @@
+---
+title: rag-forge query
+---
+
+# rag-forge query
+
+> Execute a RAG query against the indexed pipeline.
+
+## Synopsis
+
+```bash
+rag-forge query <question> [options]
+```
+
+## Description
+
+`query` takes a natural-language question, retrieves the most relevant chunks from the vector store, and passes them to a language model to generate a grounded answer. It prints the answer, the model used, and the retrieved source chunks with their relevance scores.
+
+The command supports three retrieval strategies: `dense` (vector similarity only), `sparse` (BM25 keyword matching), and `hybrid` (a Reciprocal Rank Fusion blend of both). For hybrid retrieval, `--sparse-index-path` must point to the index created during `rag-forge index` and `--alpha` controls the dense/sparse weighting.
+
+Optional guardrails (`--input-guard`, `--output-guard`) can block queries or answers that violate safety rules. If a query is blocked the command exits gracefully with a warning rather than an error.
+
+Semantic caching (`--cache`) avoids duplicate LLM calls for queries that are sufficiently similar to a previous answer (controlled by `--cache-similarity`). Agent mode (`--agent-mode`) enables multi-query decomposition where complex questions are broken into sub-queries before retrieval.
+
+## Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `question` | Yes | The question to ask the RAG pipeline |
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-k, --top-k <number>` | `5` | Number of chunks to retrieve |
+| `-e, --embedding <provider>` | `mock` | Embedding provider: `openai` \| `local` \| `mock` |
+| `-g, --generator <provider>` | `mock` | Generation provider: `claude` \| `openai` \| `mock` |
+| `-c, --collection <name>` | `rag-forge` | Collection name to query |
+| `--strategy <type>` | `dense` | Retrieval strategy: `dense` \| `sparse` \| `hybrid` |
+| `--alpha <number>` | `0.6` | RRF alpha weighting for hybrid retrieval (0.0–1.0) |
+| `--reranker <type>` | `none` | Reranker: `none` \| `cohere` \| `bge-local` |
+| `--sparse-index-path <path>` | — | Path to BM25 sparse index |
+| `--input-guard` | — | Enable input security guard |
+| `--output-guard` | — | Enable output security guard |
+| `--faithfulness-threshold <number>` | `0.85` | Faithfulness score threshold (0.0–1.0) |
+| `--rate-limit <number>` | `60` | Max queries per minute |
+| `--cache` | — | Enable semantic query caching |
+| `--cache-ttl <seconds>` | `3600` | Cache TTL in seconds |
+| `--cache-similarity <threshold>` | `0.95` | Cosine similarity threshold for cache hits |
+| `--agent-mode` | — | Enable multi-query decomposition |
+
+## Examples
+
+### Basic query with mock providers
+
+```bash
+rag-forge query "What is the refund policy?"
+```
+
+### Production query with Claude and OpenAI embeddings
+
+```bash
+rag-forge query "Summarise the onboarding process" \
+  --embedding openai \
+  --generator claude \
+  --collection my-project
+```
+
+### Hybrid retrieval with reranking
+
+```bash
+rag-forge query "How do I reset my password?" \
+  --strategy hybrid \
+  --sparse-index-path ./bm25.pkl \
+  --reranker cohere \
+  --top-k 10
+```
+
+### Agentic multi-query decomposition
+
+```bash
+rag-forge query "Compare our pricing tiers and explain the enterprise SLA" \
+  --agent-mode \
+  --generator claude
+```
+
+## Related commands
+
+- [`rag-forge index`](/cli/index-command) — index documents before querying
+- [`rag-forge inspect`](/cli/inspect) — inspect retrieved chunks by ID
+- [`rag-forge audit`](/cli/audit) — evaluate query quality across a golden set

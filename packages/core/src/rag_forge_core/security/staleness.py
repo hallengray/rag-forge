@@ -33,13 +33,21 @@ class StalenessChecker:
             last_modified = meta.get("last_modified")
 
             if indexed_at is not None:
+                try:
+                    ts_float = float(indexed_at)
+                except (ValueError, TypeError):
+                    continue
                 indexed_at_total += 1
-                if float(indexed_at) < cutoff:
+                if ts_float < cutoff:
                     indexed_at_stale_count += 1
                     stale_reported.append(source)
             elif last_modified is not None:
                 # Surface as stale for observability, but do not count toward failure.
-                if float(last_modified) < cutoff:
+                try:
+                    ts_float = float(last_modified)
+                except (ValueError, TypeError):
+                    continue
+                if ts_float < cutoff:
                     stale_reported.append(source)
 
         if indexed_at_total == 0:

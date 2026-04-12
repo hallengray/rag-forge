@@ -26,6 +26,8 @@ class FaithfulnessResult:
 
 class FaithfulnessChecker:
     def __init__(self, generator: GenerationProvider, threshold: float = 0.85) -> None:
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("threshold must be between 0.0 and 1.0")
         self._generator = generator
         self._threshold = threshold
 
@@ -51,11 +53,19 @@ class FaithfulnessChecker:
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):
             logger.warning(
-                "Faithfulness checker returned malformed response, defaulting to pass", exc_info=True
+                "Faithfulness checker returned malformed response, blocking for safety", exc_info=True
             )
             return FaithfulnessResult(
-                passed=True,
-                score=1.0,
+                passed=False,
+                score=0.0,
                 threshold=self._threshold,
-                reason="Checker returned malformed response",
+                reason="Checker returned malformed response — blocking for safety",
+            )
+        except Exception:
+            logger.warning("Faithfulness check failed, blocking for safety", exc_info=True)
+            return FaithfulnessResult(
+                passed=False,
+                score=0.0,
+                threshold=self._threshold,
+                reason="Faithfulness check failed — blocking for safety",
             )

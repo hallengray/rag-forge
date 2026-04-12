@@ -120,12 +120,14 @@ export function registerQueryCommand(program: Command): void {
           }
 
           const output: QueryResult = JSON.parse(result.stdout);
-          spinner.succeed(`Answer (${output.model_used}):`);
 
           if (output.blocked) {
-            logger.warn(`Query blocked: ${output.blocked_reason ?? "Unknown reason"}`);
+            spinner.warn(`Query blocked: ${output.blocked_reason ?? "Unknown reason"}`);
             return;
           }
+
+          spinner.succeed(`Answer (${output.model_used}):`);
+
 
           console.log("");
           console.log(output.answer);

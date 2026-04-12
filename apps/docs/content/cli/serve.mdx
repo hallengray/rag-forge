@@ -20,6 +20,8 @@ The `--mcp` flag is required. Without it the command exits with an error.
 
 By default the server starts on stdio transport, which is the correct mode for local AI assistant integration (e.g., Claude Desktop config). Pass `--transport http` to start an SSE-based HTTP server instead, which is useful for remote clients, n8n workflows, or browser-based tooling. The HTTP server listens on `http://localhost:<port>/sse`.
 
+> **⚠️ Security.** The HTTP transport is **unauthenticated by default** and has no TLS, rate-limiting, or origin checking. Do not expose it directly to the public internet. For any networked deployment, place it behind a reverse proxy (nginx, Caddy, Cloudflare Tunnel) that terminates TLS, enforces authentication, and restricts the allowed clients. For single-machine local use, bind it only to `127.0.0.1`.
+
 The MCP server binary must be built before running this command. If it has not been built yet, run `pnpm run build` from the repository root first.
 
 ## Options

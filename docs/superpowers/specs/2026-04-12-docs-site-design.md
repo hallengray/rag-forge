@@ -44,7 +44,7 @@ A documentation site for RAG-Forge built with Next.js 16 + Nextra v4, deployed t
 
 The docs site lives in a new `apps/docs/` workspace alongside `apps/site/`. The Turborepo `apps/*` workspace pattern is already established by PR #18.
 
-```
+```text
 apps/
 ├── site/                       # Existing — landing page
 └── docs/                       # New — Nextra docs site
@@ -68,7 +68,7 @@ apps/
     │   │   ├── add.mdx
     │   │   ├── parse.mdx
     │   │   ├── chunk.mdx
-    │   │   ├── index.mdx       # rag-forge index command
+    │   │   ├── index-command.mdx  # rag-forge index command (filename avoids collision with Nextra's /cli/index route)
     │   │   ├── query.mdx
     │   │   ├── inspect.mdx
     │   │   ├── audit.mdx
@@ -112,11 +112,13 @@ apps/
 **Total: 34 pages** (1 home + 3 getting started + 18 CLI reference + 5 templates + 5 concepts + 1 MCP + 1 contributing)
 
 ### Section 1: Getting Started (3 pages)
+
 1. `getting-started/installation.mdx`
 2. `getting-started/quick-start.mdx`
 3. `getting-started/concepts.mdx`
 
-### Section 2: CLI Reference (17 pages)
+### Section 2: CLI Reference (18 pages)
+
 1. `cli/overview.mdx` — All commands at a glance
 2. `cli/init.mdx`
 3. `cli/add.mdx`
@@ -137,6 +139,7 @@ apps/
 18. `cli/n8n.mdx`
 
 ### Section 3: Templates (5 pages)
+
 1. `templates/basic.mdx`
 2. `templates/hybrid.mdx`
 3. `templates/agentic.mdx`
@@ -144,6 +147,7 @@ apps/
 5. `templates/n8n.mdx`
 
 ### Section 4: Concepts (5 pages)
+
 1. `concepts/rmm.mdx` — RAG Maturity Model
 2. `concepts/chunking.mdx`
 3. `concepts/retrieval.mdx`
@@ -151,12 +155,15 @@ apps/
 5. `concepts/observability.mdx`
 
 ### Section 5: MCP (1 page)
+
 1. `mcp/overview.mdx`
 
 ### Section 6: Contributing (1 page)
+
 1. `contributing.mdx` — Condensed version + link to root `CONTRIBUTING.md`
 
 ### Home (1 page)
+
 1. `index.mdx` — Welcome landing page with quick links to each section
 
 ## Page Template Standards
@@ -378,7 +385,7 @@ Each section has its own `_meta.json` defining the order and display names of pa
 
 ## What's Required Before Launch
 
-1. PR with `apps/docs/` directory and all 30 MDX pages
+1. PR with `apps/docs/` directory and all 34 MDX pages
 2. Verify the full monorepo build still works (`pnpm run build`)
 3. Connect Vercel to the repo as a new project (separate from landing page)
 4. First deploy to `rag-forge-docs.vercel.app`

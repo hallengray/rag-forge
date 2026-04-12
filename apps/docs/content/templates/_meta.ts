@@ -1,10 +1,10 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
-  basic: "basic",
-  hybrid: "hybrid",
-  agentic: "agentic",
-  enterprise: "enterprise",
+  basic: "Basic",
+  hybrid: "Hybrid",
+  agentic: "Agentic",
+  enterprise: "Enterprise",
   n8n: "n8n",
 };
 

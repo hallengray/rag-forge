@@ -10,7 +10,7 @@ title: RAG Maturity Model
 
 Most RAG pipelines start the same way: embed some documents, do a vector search, feed the results to an LLM, and ship it. That works well enough to demo. It rarely works well enough for production. Users get hallucinated answers, irrelevant context, slow responses, or results that vary unpredictably. The root causes are different at each stage of maturity — sometimes it is retrieval quality, sometimes it is answer faithfulness, sometimes it is operational readiness — and the same fix does not work at every stage.
 
-The RMM gives you a structured path through those stages. Rather than debugging blindly, you run `rag-forge audit` or `rag-forge assess` to find out which level you are at, then read the exit criteria for the next level to know exactly what to improve. The model is hierarchical: you cannot reach RMM-3 without first satisfying RMM-1 and RMM-2, because each layer of quality depends on the one below it.
+The RMM gives you a structured path through those stages. Rather than debugging blindly, you run `rag-forge audit` or `rag-forge assess` to find out which level you are at, then read the exit criteria for the next level to know exactly what to improve. The model is designed as a linear progression — in practice you should aim to pass the levels in order, because each layer of quality depends on the one below. That said, the `RMMScorer` in `maturity.py` evaluates the trust criteria (faithfulness and context relevance) independently from recall and precision: you can technically score RMM-3 without having first passed RMM-2, if your metrics qualify. The recommended discipline is still to fix recall and precision first; an out-of-order RMM-3 usually signals that your earlier metrics are unreliable, not that your pipeline is production-ready.
 
 ## How RAG-Forge implements it
 
@@ -30,7 +30,7 @@ The six levels are:
 
 **RMM-5 — Enterprise.** RBAC is active, drift detection is live, CI/CD evaluation gates run on every pull request, and adversarial tests pass. To reach this level from RMM-4: wire `rag-forge assess` into your CI pipeline and enable the drift detector in `packages/observability/src/rag_forge_observability/drift.py`.
 
-The `RMMScorer.assess` method in `maturity.py` checks RMM-1 and RMM-2 through the recall/nDCG path and RMM-3 independently via faithfulness and context relevance, then returns the highest level achieved. The `RMMAssessor` class in `assess.py` provides a broader check that reads your `rag-forge.config.ts` and an optional prior audit JSON to assess infrastructure features (caching, RBAC, drift detection) that cannot be inferred from metrics alone.
+The `RMMScorer.assess` method in `maturity.py` checks RMM-1 and RMM-2 through the recall/nDCG path and RMM-3 independently via faithfulness and context relevance, then returns the highest level achieved. The `RMMAssessor` class in `assess.py` provides a broader check: it takes a plain configuration dictionary — populated by the CLI from your project's `pyproject.toml` `[tool.rag-forge]` section — plus an optional prior audit JSON, and uses both to assess infrastructure features (caching, RBAC, drift detection) that cannot be inferred from metrics alone.
 
 ## Trade-offs
 

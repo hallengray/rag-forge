@@ -24,7 +24,9 @@ The RAG-Forge MCP server wraps your indexed pipeline as a set of tools any MCP c
 rag-forge serve --mcp
 ```
 
-For multi-client or networked deployments, use the HTTP transport. The default port is `3100`:
+For multi-client or networked deployments, use the HTTP transport. The default port is `3100`.
+
+> **⚠️ Security.** The HTTP transport is **unauthenticated by default** and has no TLS, rate-limiting, or origin checking. Do not expose it directly to the public internet. For any networked deployment, place it behind a reverse proxy (nginx, Caddy, Cloudflare Tunnel) that terminates TLS, enforces authentication, and restricts the allowed clients. For single-machine local use, bind it only to `127.0.0.1`.
 
 ```bash
 rag-forge serve --mcp --transport http --port 3100

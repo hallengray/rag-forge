@@ -22,7 +22,7 @@ You can run stages independently (e.g. `chunk` alone for experimentation) or in 
 
 ## Configuration
 
-Every project has a `rag-forge.config.ts` at its root. This is the single source of truth for chunking strategy, retrieval settings, evaluation thresholds, and provider choices. RAG-Forge validates the config at init time — misconfigurations fail fast via Pydantic, before any documents are touched.
+Every scaffolded project keeps its RAG-Forge configuration in the `[tool.rag-forge]` section of its `pyproject.toml`. This is the single source of truth for chunking strategy, retrieval settings, and provider choices; evaluation thresholds for the CI audit gate live alongside the golden set in `eval/config.yaml`. RAG-Forge validates the configuration at init time — misconfigurations fail fast via Pydantic, before any documents are touched.
 
 ## The RAG Maturity Model (RMM)
 

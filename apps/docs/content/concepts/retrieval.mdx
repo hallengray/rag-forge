@@ -27,7 +27,7 @@ All retrieval implementations live in `packages/core/src/rag_forge_core/retrieva
 The full retrieval pipeline when all features are enabled:
 
 1. Embed the query (dense)
-2. Search the vector store and the BM25 index in parallel
+2. Search the vector store, then the BM25 index (the current implementation in `hybrid.py` runs them sequentially; a parallel version is a future optimisation)
 3. Merge the two result lists with RRF using the configured `alpha`
 4. Pass the merged candidates to the reranker for cross-encoder scoring
 5. Return the top-k reranked results

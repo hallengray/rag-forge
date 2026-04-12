@@ -1,7 +1,18 @@
 {
   "name": "@rag-forge/shared",
   "version": "0.1.0",
-  "description": "Shared utilities for RAG-Forge packages",
+  "description": "Internal shared utilities for RAG-Forge packages",
+  "author": "Femi Adedayo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hallengray/rag-forge.git",
+    "directory": "packages/shared"
+  },
+  "homepage": "https://github.com/hallengray/rag-forge#readme",
+  "bugs": {
+    "url": "https://github.com/hallengray/rag-forge/issues"
+  },
+  "keywords": ["rag", "rag-forge", "internal"],
   "type": "module",
   "exports": {
     ".": {

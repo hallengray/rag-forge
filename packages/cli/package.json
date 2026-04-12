@@ -2,6 +2,26 @@
   "name": "rag-forge",
   "version": "0.1.0",
   "description": "Framework-agnostic CLI toolkit for production-grade RAG pipelines with evaluation baked in",
+  "author": "Femi Adedayo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hallengray/rag-forge.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/hallengray/rag-forge#readme",
+  "bugs": {
+    "url": "https://github.com/hallengray/rag-forge/issues"
+  },
+  "keywords": [
+    "rag",
+    "retrieval-augmented-generation",
+    "evaluation",
+    "llm",
+    "cli",
+    "rag-pipeline",
+    "ragas",
+    "deepeval"
+  ],
   "type": "module",
   "bin": {
     "rag-forge": "./dist/index.js"

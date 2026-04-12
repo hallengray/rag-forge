@@ -41,6 +41,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@rag-forge/shared':
+        specifier: workspace:*
+        version: link:../shared
       chalk:
         specifier: ^5.3.0
         version: 5.6.2
@@ -50,9 +53,6 @@ importers:
       cosmiconfig:
         specifier: ^9.0.0
         version: 9.0.1(typescript@5.9.3)
-      execa:
-        specifier: ^9.0.0
-        version: 9.6.1
       ora:
         specifier: ^8.0.0
         version: 8.2.0

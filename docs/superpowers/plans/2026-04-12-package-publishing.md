@@ -890,8 +890,6 @@ gh pr create --title "feat: package publishing infrastructure for npm + PyPI" --
 - [x] All 6 package files have valid metadata
 - [x] YAML workflow file is valid
 - [x] `pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test` pass
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```

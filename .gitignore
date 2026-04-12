@@ -53,10 +53,10 @@ coverage/
 npm-debug.log*
 pnpm-debug.log*
 
-# Claude Code
 .claude/
 
 # Next.js
 apps/*/.next
 apps/*/out
 apps/*/next-env.d.ts
+.vercel

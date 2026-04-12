@@ -30,5 +30,6 @@ export async function startHttpServer(port: number): Promise<void> {
     console.error(`RAG-Forge MCP server listening on http://localhost:${String(port)}/sse`);
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional: keep the process alive indefinitely
   await new Promise<never>(() => {});
 }

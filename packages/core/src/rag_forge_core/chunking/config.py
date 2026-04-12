@@ -10,6 +10,7 @@ class ChunkConfig(BaseModel):
 
     strategy: str = Field(
         default="recursive",
+        pattern=r"^(fixed|recursive|semantic|structural|llm-driven)$",
         description="Chunking strategy: fixed, recursive, semantic, structural, llm-driven",
     )
     chunk_size: int = Field(

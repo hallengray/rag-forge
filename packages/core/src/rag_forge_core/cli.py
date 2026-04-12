@@ -28,6 +28,7 @@ from rag_forge_core.security.output_guard import OutputGuard
 from rag_forge_core.security.pii import RegexPIIScanner
 from rag_forge_core.security.rate_limiter import RateLimiter
 from rag_forge_core.storage.qdrant import QdrantStore
+from rag_forge_observability.tracing import TracingManager
 
 
 def _create_embedder(provider: str) -> EmbeddingProvider:
@@ -119,6 +120,10 @@ def cmd_index(args: argparse.Namespace) -> None:
     if args.sparse_index_path:
         sparse_retriever = SparseRetriever(index_path=args.sparse_index_path)
 
+    tracing = TracingManager()
+    tracing.enable()
+    tracer = tracing.get_tracer()
+
     pipeline = IngestionPipeline(
         parser=DirectoryParser(),
         chunker=RecursiveChunker(chunk_config),
@@ -127,6 +132,7 @@ def cmd_index(args: argparse.Namespace) -> None:
         collection_name=collection,
         enricher=enricher,
         sparse_retriever=sparse_retriever,
+        tracer=tracer,
     )
 
     result = pipeline.run(source)
@@ -140,6 +146,7 @@ def cmd_index(args: argparse.Namespace) -> None:
         "errors": result.errors,
     }
     json.dump(output, sys.stdout)
+    tracing.shutdown()
 
 
 def cmd_query(args: argparse.Namespace) -> None:
@@ -226,12 +233,17 @@ def cmd_query(args: argparse.Namespace) -> None:
             pii_scanner=RegexPIIScanner(),
         )
 
+    tracing = TracingManager()
+    tracing.enable()
+    tracer = tracing.get_tracer()
+
     engine = QueryEngine(
         retriever=retriever,
         generator=_create_generator(generator_provider),
         top_k=top_k,
         input_guard=input_guard,
         output_guard=output_guard,
+        tracer=tracer,
     )
     result = engine.query(args.question)
     output = {
@@ -251,6 +263,7 @@ def cmd_query(args: argparse.Namespace) -> None:
         ],
     }
     json.dump(output, sys.stdout)
+    tracing.shutdown()
 
 
 def cmd_status(args: argparse.Namespace) -> None:

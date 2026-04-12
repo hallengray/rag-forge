@@ -91,6 +91,104 @@ def _create_reranker(reranker_type: str, cohere_api_key: str | None = None) -> R
     )
 
 
+def cmd_parse(args: argparse.Namespace) -> None:
+    """Preview document extraction without indexing."""
+    try:
+        source = Path(args.source)
+        if not source.is_dir():
+            json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
+            sys.exit(1)
+
+        parser = DirectoryParser()
+        documents, errors = parser.parse_directory(source)
+
+        files_info = []
+        for doc in documents:
+            files_info.append({
+                "path": doc.source_path,
+                "characters": len(doc.text),
+            })
+
+        output = {
+            "success": True,
+            "files_found": len(documents),
+            "files": files_info,
+            "total_characters": sum(f["characters"] for f in files_info),
+            "parse_errors": errors,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_chunk(args: argparse.Namespace) -> None:
+    """Preview chunking without indexing."""
+    try:
+        source = Path(args.source)
+        if not source.is_dir():
+            json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
+            sys.exit(1)
+
+        strategy = args.strategy or "recursive"
+        chunk_size = int(args.chunk_size) if args.chunk_size else 512
+
+        chunk_config = ChunkConfig(strategy=strategy, chunk_size=chunk_size)
+        chunker = create_chunker(config=chunk_config)
+        parser = DirectoryParser()
+
+        documents, _errors = parser.parse_directory(source)
+        all_chunks = []
+        for doc in documents:
+            chunks = chunker.chunk(doc.text, doc.source_path)
+            all_chunks.extend(chunks)
+
+        stats = chunker.stats(all_chunks) if all_chunks else None
+
+        samples = []
+        for chunk in all_chunks[:3]:
+            samples.append({
+                "index": chunk.chunk_index,
+                "source": chunk.source_document,
+                "preview": chunk.text[:100] + ("..." if len(chunk.text) > 100 else ""),
+            })
+
+        output = {
+            "success": True,
+            "strategy": strategy,
+            "chunk_size": chunk_size,
+            "total_chunks": len(all_chunks),
+            "stats": {
+                "avg_chunk_size": stats.avg_chunk_size if stats else 0,
+                "min_chunk_size": stats.min_chunk_size if stats else 0,
+                "max_chunk_size": stats.max_chunk_size if stats else 0,
+                "total_tokens": stats.total_tokens if stats else 0,
+            },
+            "samples": samples,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_n8n_export(args: argparse.Namespace) -> None:
+    """Export pipeline configuration as n8n workflow JSON."""
+    from rag_forge_core.n8n_export import generate_n8n_workflow
+
+    try:
+        mcp_url = args.mcp_url or "http://localhost:3100/sse"
+        output_path = Path(args.output or "n8n-workflow.json")
+        workflow = generate_n8n_workflow(mcp_url=mcp_url)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w") as f:
+            json.dump(workflow, f, indent=2)
+        json.dump(
+            {"success": True, "output_path": str(output_path), "nodes": len(workflow["nodes"])},
+            sys.stdout,
+        )
+    except Exception as e:
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+
+
 def cmd_index(args: argparse.Namespace) -> None:
     """Run the index command."""
     try:
@@ -333,6 +431,39 @@ def cmd_status(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_cache_stats(args: argparse.Namespace) -> None:
+    """Report semantic cache statistics."""
+    stats_path = Path("./cache/stats.json")
+    if stats_path.exists():
+        try:
+            with stats_path.open() as f:
+                stats = json.load(f)
+            hits = stats.get("hits", 0)
+            misses = stats.get("misses", 0)
+            total = stats.get("total", hits + misses)
+            output = {
+                "success": True,
+                "hits": hits,
+                "misses": misses,
+                "total": total,
+                "hit_rate": hits / total if total > 0 else 0.0,
+                "source": "persisted",
+            }
+        except Exception as e:
+            output = {"success": False, "error": f"Failed to read cache stats: {e}"}
+    else:
+        output = {
+            "success": True,
+            "hits": 0,
+            "misses": 0,
+            "total": 0,
+            "hit_rate": 0.0,
+            "source": "none",
+            "message": "No cache data available — cache stats are tracked during MCP server sessions",
+        }
+    json.dump(output, sys.stdout)
+
+
 def cmd_inspect(args: argparse.Namespace) -> None:
     """Inspect a specific chunk by ID."""
     collection = args.collection or "rag-forge"
@@ -358,10 +489,76 @@ def cmd_inspect(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_guardrails_test(args: argparse.Namespace) -> None:
+    """Run adversarial test suite against security guards."""
+    from rag_forge_core.security.adversarial import AdversarialRunner
+
+    try:
+        user_corpus = args.corpus if hasattr(args, "corpus") and args.corpus else None
+        runner = AdversarialRunner(user_corpus_path=user_corpus)
+        result = runner.run()
+        output = {
+            "success": True,
+            "total_tested": result.total_tested,
+            "blocked": result.blocked,
+            "passed_through": result.passed_through,
+            "pass_rate": result.pass_rate,
+            "by_category": result.by_category,
+            "failures": result.failures,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_guardrails_scan_pii(args: argparse.Namespace) -> None:
+    """Scan vector store collection for PII."""
+    from rag_forge_core.security.pii_scanner import PIICollectionScanner
+
+    try:
+        collection = args.collection or "rag-forge"
+        store = QdrantStore()
+        count = store.count(collection)
+        all_chunks: list[dict[str, str]] = []
+        points = store._client.scroll(collection_name=collection, limit=count)[0]
+        for point in points:
+            payload = dict(point.payload or {})
+            text = str(payload.get("text", ""))
+            chunk_id = str(payload.get("item_id", point.id))
+            all_chunks.append({"id": chunk_id, "text": text})
+
+        scanner = PIICollectionScanner()
+        report = scanner.scan_chunks(all_chunks)
+        output = {
+            "success": True,
+            "chunks_scanned": report.chunks_scanned,
+            "chunks_with_pii": report.chunks_with_pii,
+            "pii_types": report.pii_types,
+            "affected_chunks": report.affected_chunks,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point for the Python CLI bridge."""
     parser = argparse.ArgumentParser(prog="rag-forge-core")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    parse_parser = subparsers.add_parser("parse", help="Preview document extraction")
+    parse_parser.add_argument("--source", required=True, help="Source directory")
+
+    chunk_parser = subparsers.add_parser("chunk", help="Preview chunking")
+    chunk_parser.add_argument("--source", required=True, help="Source directory")
+    chunk_parser.add_argument("--strategy", default="recursive", help="Chunking strategy")
+    chunk_parser.add_argument("--chunk-size", help="Target chunk size in tokens")
+
+    n8n_parser = subparsers.add_parser("n8n-export", help="Export as n8n workflow")
+    n8n_parser.add_argument("--output", help="Output file path", default="n8n-workflow.json")
+    n8n_parser.add_argument(
+        "--mcp-url", help="MCP server URL", default="http://localhost:3100/sse"
+    )
 
     index_parser = subparsers.add_parser("index", help="Index documents")
     index_parser.add_argument("--source", required=True, help="Source directory")
@@ -423,19 +620,41 @@ def main() -> None:
     status_parser = subparsers.add_parser("status", help="Check pipeline status")
     status_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
+    cache_parser = subparsers.add_parser("cache-stats", help="Show semantic cache stats")
+    # cache-stats takes no arguments — suppress unused variable warning
+    _ = cache_parser
+
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a chunk by ID")
     inspect_parser.add_argument("--chunk-id", required=True, help="The chunk ID to inspect")
     inspect_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
+    guardrails_test_parser = subparsers.add_parser("guardrails-test", help="Run adversarial test suite")
+    guardrails_test_parser.add_argument("--corpus", help="Path to custom adversarial corpus JSON")
+
+    guardrails_scan_parser = subparsers.add_parser("guardrails-scan-pii", help="Scan collection for PII")
+    guardrails_scan_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     args = parser.parse_args()
-    if args.command == "index":
+    if args.command == "parse":
+        cmd_parse(args)
+    elif args.command == "chunk":
+        cmd_chunk(args)
+    elif args.command == "n8n-export":
+        cmd_n8n_export(args)
+    elif args.command == "index":
         cmd_index(args)
     elif args.command == "query":
         cmd_query(args)
     elif args.command == "status":
         cmd_status(args)
+    elif args.command == "cache-stats":
+        cmd_cache_stats(args)
     elif args.command == "inspect":
         cmd_inspect(args)
+    elif args.command == "guardrails-test":
+        cmd_guardrails_test(args)
+    elif args.command == "guardrails-scan-pii":
+        cmd_guardrails_scan_pii(args)
 
 
 if __name__ == "__main__":

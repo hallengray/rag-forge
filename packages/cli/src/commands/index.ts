@@ -18,7 +18,11 @@ export function registerIndexCommand(program: Command): void {
     .requiredOption("-s, --source <dir>", "Source directory of documents to index")
     .option("-c, --collection <name>", "Collection name", "rag-forge")
     .option("-e, --embedding <provider>", "Embedding provider: openai | local | mock", "mock")
-    .option("--strategy <name>", "Chunking strategy", "recursive")
+    .option("--strategy <name>", "Chunking strategy: fixed | recursive | semantic | structural | llm-driven", "recursive")
+    .option(
+      "--chunking-generator <provider>",
+      "Generator for LLM-driven chunking: claude | openai | mock",
+    )
     .option("--enrich", "Enable contextual enrichment (document summary prepending)")
     .option(
       "--sparse-index-path <path>",
@@ -35,6 +39,7 @@ export function registerIndexCommand(program: Command): void {
         collection: string;
         embedding: string;
         strategy: string;
+        chunkingGenerator?: string;
         enrich?: boolean;
         sparseIndexPath?: string;
         enrichmentGenerator?: string;
@@ -60,6 +65,12 @@ export function registerIndexCommand(program: Command): void {
             "--config-json",
             configJson,
           ];
+
+          args.push("--strategy", options.strategy);
+
+          if (options.chunkingGenerator) {
+            args.push("--chunking-generator", options.chunkingGenerator);
+          }
 
           if (options.enrichmentGenerator && !options.enrich) {
             spinner.fail("--enrichment-generator requires --enrich");

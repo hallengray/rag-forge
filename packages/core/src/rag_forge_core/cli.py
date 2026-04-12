@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from rag_forge_core.chunking.config import ChunkConfig
-from rag_forge_core.chunking.recursive import RecursiveChunker
+from rag_forge_core.chunking.factory import create_chunker
 from rag_forge_core.context.enricher import ContextualEnricher
 from rag_forge_core.context.semantic_cache import SemanticCache
 from rag_forge_core.embedding.base import EmbeddingProvider
@@ -105,10 +105,22 @@ def cmd_index(args: argparse.Namespace) -> None:
     chunk_size = config.get("chunk_size", 512)
     overlap_ratio = config.get("overlap_ratio", 0.1)
 
+    strategy = args.strategy if hasattr(args, "strategy") and args.strategy else "recursive"
     chunk_config = ChunkConfig(
-        strategy="recursive",
+        strategy=strategy,
         chunk_size=chunk_size,
         overlap_ratio=overlap_ratio,
+    )
+
+    embedder = _create_embedder(embedding_provider)
+    chunker = create_chunker(
+        config=chunk_config,
+        embedder=embedder if strategy == "semantic" else None,
+        generator=(
+            _create_generator(args.chunking_generator or "mock")
+            if strategy == "llm-driven"
+            else None
+        ),
     )
 
     # Optional enricher
@@ -128,8 +140,8 @@ def cmd_index(args: argparse.Namespace) -> None:
 
     pipeline = IngestionPipeline(
         parser=DirectoryParser(),
-        chunker=RecursiveChunker(chunk_config),
-        embedder=_create_embedder(embedding_provider),
+        chunker=chunker,
+        embedder=embedder,
         store=QdrantStore(),
         collection_name=collection,
         enricher=enricher,
@@ -354,6 +366,15 @@ def main() -> None:
     index_parser.add_argument(
         "--enrichment-generator",
         help="Generator for summaries: claude | openai | mock",
+    )
+    index_parser.add_argument(
+        "--strategy",
+        default="recursive",
+        help="Chunking strategy: fixed | recursive | semantic | structural | llm-driven",
+    )
+    index_parser.add_argument(
+        "--chunking-generator",
+        help="Generator for LLM-driven chunking: claude | openai | mock",
     )
 
     query_parser = subparsers.add_parser("query", help="Query the RAG pipeline")

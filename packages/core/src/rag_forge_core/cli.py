@@ -235,6 +235,9 @@ def cmd_query(args: argparse.Namespace) -> None:
         )
 
     # Build cache if enabled
+    # Note: In-memory cache is session-scoped. For CLI one-shot usage,
+    # caching is only effective when the MCP server handles multiple
+    # queries in the same process. CLI flag exists for consistency.
     cache = None
     if args.cache:
         cache = SemanticCache(

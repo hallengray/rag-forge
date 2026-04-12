@@ -66,16 +66,8 @@ class QueryEngine:
     def query(self, question: str, alpha: float | None = None, user_id: str = "default") -> QueryResult:
         """Execute a RAG query. Optional alpha override for hybrid retrieval."""
         with self._span("rag-forge.query"):
-            # 0. Cache check
-            if self._cache is not None:
-                cached = self._cache.get(question)
-                if cached is not None:
-                    with self._span("rag-forge.cache_hit") as span:
-                        if span is not None:
-                            span.set_attribute("cache_hit", True)
-                    return cached
-
-            # 1. Input guard
+            # 1. Input guard — always runs first so cached results cannot
+            #    bypass rate limiting, injection detection, or PII scanning.
             if self._input_guard is not None:
                 with self._span("rag-forge.input_guard") as span:
                     guard_result = self._input_guard.check(question, user_id=user_id)
@@ -92,7 +84,16 @@ class QueryEngine:
                             blocked_reason=guard_result.reason,
                         )
 
-            # 2. Retrieve
+            # 2. Cache check — after input guard so every query is validated.
+            if self._cache is not None:
+                cached = self._cache.get(question)
+                if cached is not None:
+                    with self._span("rag-forge.cache_hit") as span:
+                        if span is not None:
+                            span.set_attribute("cache_hit", True)
+                    return cached
+
+            # 3. Retrieve
             retriever = self._retriever
 
             if alpha is not None and isinstance(retriever, HybridRetriever):
@@ -117,7 +118,7 @@ class QueryEngine:
                     chunks_retrieved=0,
                 )
 
-            # 3. Generate
+            # 4. Generate
             context_text = "\n\n".join(
                 f"[Source {i + 1}]: {r.text}" for i, r in enumerate(results)
             )
@@ -127,7 +128,7 @@ class QueryEngine:
                 if span is not None:
                     span.set_attribute("model", self._generator.model_name())
 
-            # 4. Output guard
+            # 5. Output guard
             if self._output_guard is not None:
                 chunk_ids = [r.chunk_id for r in results]
                 contexts = [r.text for r in results]

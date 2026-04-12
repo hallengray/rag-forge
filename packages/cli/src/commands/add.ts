@@ -20,16 +20,25 @@ interface ModuleManifest {
   modules: Record<string, ModuleDefinition>;
 }
 
-function getManifestPath(): string {
+function getPackageRoot(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  // dist/index.js -> packages/cli/dist/ -> up to packages/cli/ -> src/modules/manifest.json
-  return resolve(currentDir, "..", "src", "modules", "manifest.json");
+  // Works for both src/commands/*.ts (dev) and dist/*.js (production)
+  // In dev: packages/cli/src/commands -> up 2 = packages/cli
+  // In prod: packages/cli/dist -> up 1 = packages/cli
+  // Use path segment check: if currentDir ends with "commands", we're in src/commands
+  if (currentDir.endsWith("commands") || currentDir.endsWith("commands\\") || currentDir.endsWith("commands/")) {
+    return resolve(currentDir, "..", "..");
+  }
+  return resolve(currentDir, "..");
+}
+
+function getManifestPath(): string {
+  return resolve(getPackageRoot(), "src", "modules", "manifest.json");
 }
 
 function getTemplateSourceDir(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  // dist/index.js -> packages/cli/dist/ -> up three levels to monorepo root -> templates/
-  return resolve(currentDir, "..", "..", "..", "templates", "enterprise", "project", "src");
+  // Monorepo templates: packages/cli -> up 2 = monorepo root -> templates/
+  return resolve(getPackageRoot(), "..", "..", "templates", "enterprise", "project", "src");
 }
 
 export function registerAddCommand(program: Command): void {
@@ -63,6 +72,7 @@ export function registerAddCommand(program: Command): void {
       const sourceDir = getTemplateSourceDir();
       let added = 0;
       let skipped = 0;
+      let missingSources = 0;
 
       for (const file of mod.files) {
         const srcPath = resolve(sourceDir, file.src);
@@ -76,7 +86,7 @@ export function registerAddCommand(program: Command): void {
 
         if (!existsSync(srcPath)) {
           logger.warn(`  Skip (source not found): ${file.src}`);
-          skipped++;
+          missingSources++;
           continue;
         }
 
@@ -86,7 +96,17 @@ export function registerAddCommand(program: Command): void {
         added++;
       }
 
-      logger.info(`\nAdded ${String(added)} files, skipped ${String(skipped)}`);
+      logger.info(
+        `\nAdded ${String(added)} files, skipped ${String(skipped)}, missing ${String(missingSources)}`,
+      );
+
+      // Fail if nothing was added due to missing sources — indicates packaging/manifest defect
+      if (added === 0 && missingSources > 0) {
+        logger.error(
+          "No files were added because all sources are missing. This indicates a packaging or manifest problem.",
+        );
+        process.exit(1);
+      }
 
       if (mod.dependencies.length > 0) {
         logger.info("\nInstall dependencies:");

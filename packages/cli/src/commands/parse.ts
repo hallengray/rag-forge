@@ -34,8 +34,15 @@ export function registerParseCommand(program: Command): void {
         });
 
         if (result.exitCode !== 0) {
+          let errorMessage = result.stderr || "Unknown error";
+          try {
+            const parsed = JSON.parse(result.stdout) as Partial<ParseResult>;
+            if (parsed.error) errorMessage = parsed.error;
+          } catch {
+            // stdout not JSON
+          }
           spinner.fail("Parse preview failed");
-          logger.error(result.stderr || "Unknown error");
+          logger.error(errorMessage);
           process.exit(1);
         }
 

@@ -64,8 +64,15 @@ export function registerChunkCommand(program: Command): void {
           });
 
           if (result.exitCode !== 0) {
+            let errorMessage = result.stderr || "Unknown error";
+            try {
+              const parsed = JSON.parse(result.stdout) as Partial<ChunkResult>;
+              if (parsed.error) errorMessage = parsed.error;
+            } catch {
+              // stdout not JSON
+            }
             spinner.fail("Chunk preview failed");
-            logger.error(result.stderr || "Unknown error");
+            logger.error(errorMessage);
             process.exit(1);
           }
 

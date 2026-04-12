@@ -95,7 +95,7 @@ def cmd_parse(args: argparse.Namespace) -> None:
     """Preview document extraction without indexing."""
     try:
         source = Path(args.source)
-        if not source.exists():
+        if not source.is_dir():
             json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
             sys.exit(1)
 
@@ -125,7 +125,7 @@ def cmd_chunk(args: argparse.Namespace) -> None:
     """Preview chunking without indexing."""
     try:
         source = Path(args.source)
-        if not source.exists():
+        if not source.is_dir():
             json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
             sys.exit(1)
 

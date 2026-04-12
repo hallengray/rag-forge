@@ -1,5 +1,7 @@
 """Tests for PDF report generator."""
 
+import importlib.util
+
 import pytest
 
 from rag_forge_evaluator.report.pdf import PDFGenerator
@@ -7,11 +9,8 @@ from rag_forge_evaluator.report.pdf import PDFGenerator
 
 class TestPDFGenerator:
     def test_import_error_when_playwright_missing(self) -> None:
-        try:
-            import playwright
+        if importlib.util.find_spec("playwright") is not None:
             pytest.skip("Playwright is installed")
-        except ImportError:
-            pass
         from pathlib import Path
         generator = PDFGenerator()
         with pytest.raises(ImportError, match="Playwright"):

@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ragQuerySchema, handleRagQuery } from "./tools/rag-query.js";
 import { ragAuditSchema, handleRagAudit } from "./tools/rag-audit.js";
 import { handleRagStatus } from "./tools/rag-status.js";
+import { ragIngestSchema, handleRagIngest } from "./tools/rag-ingest.js";
+import { ragInspectSchema, handleRagInspect } from "./tools/rag-inspect.js";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -21,6 +23,16 @@ export function createServer(): McpServer {
 
   server.tool("rag_status", "Return pipeline health metrics and cache stats", {}, async () => {
     const result = await handleRagStatus();
+    return { content: [{ type: "text" as const, text: result }] };
+  });
+
+  server.tool("rag_ingest", "Index new documents into the pipeline", ragIngestSchema.shape, async (input) => {
+    const result = await handleRagIngest(ragIngestSchema.parse(input));
+    return { content: [{ type: "text" as const, text: result }] };
+  });
+
+  server.tool("rag_inspect", "Debug a specific chunk by ID", ragInspectSchema.shape, async (input) => {
+    const result = await handleRagInspect(ragInspectSchema.parse(input));
     return { content: [{ type: "text" as const, text: result }] };
   });
 

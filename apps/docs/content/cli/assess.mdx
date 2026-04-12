@@ -1,0 +1,59 @@
+---
+title: rag-forge assess
+---
+
+# rag-forge assess
+
+> Run RAG Maturity Model assessment
+
+## Synopsis
+
+```bash
+rag-forge assess [options]
+```
+
+## Description
+
+`assess` runs a one-shot RMM (RAG Maturity Model) assessment against your pipeline configuration and produces a maturity level badge (0–5) with a pass/fail breakdown for each criterion.
+
+Unlike `audit`, which requires telemetry or golden set data and makes LLM scoring calls, `assess` inspects your pipeline configuration and optional audit report to determine which maturity criteria are satisfied. It is fast, cheap, and suitable for running in CI to gate deployments on a minimum RMM level.
+
+The command delegates to the Python `rag_forge_evaluator.cli` module. Results are printed to the terminal with a structured per-criterion breakdown. Each criterion shows whether it passed and which individual checks contributed to that verdict.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config <json>` | — | Pipeline config as a JSON string |
+| `--audit-report <file>` | — | Path to a previously generated audit JSON report |
+
+## Examples
+
+### Basic usage
+
+```bash
+rag-forge assess
+```
+
+### Assess with an explicit config JSON
+
+```bash
+rag-forge assess --config '{"embedding_model":"text-embedding-3-small","chunk_size":512}'
+```
+
+### Incorporate a prior audit report
+
+```bash
+rag-forge assess --audit-report ./reports/audit.json
+```
+
+### Use in CI to check minimum maturity
+
+```bash
+rag-forge assess --config "$(cat rag-forge.config.json)" --audit-report ./reports/latest.json
+```
+
+## Related commands
+
+- [`rag-forge audit`](/cli/audit) — full evaluation run that generates an audit report
+- [`rag-forge report`](/cli/report) — generate an HTML health report dashboard from existing data

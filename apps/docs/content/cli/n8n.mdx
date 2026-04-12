@@ -1,0 +1,53 @@
+---
+title: rag-forge n8n
+---
+
+# rag-forge n8n
+
+> Export pipeline configuration as an importable n8n workflow
+
+## Synopsis
+
+```bash
+rag-forge n8n [options]
+```
+
+## Description
+
+`n8n` generates an n8n workflow JSON file that wires your RAG pipeline into n8n via the RAG-Forge MCP server's SSE endpoint. The exported file can be imported directly into any n8n instance and immediately used to build automated document ingestion, query, and evaluation pipelines without writing any n8n node configuration by hand.
+
+The command delegates to the Python `rag_forge_core.cli` module. It reads your current pipeline configuration and produces a workflow with pre-configured MCP tool nodes pointing at the specified SSE endpoint.
+
+If you are starting a new project intended for n8n, the `n8n` template (scaffolded with `rag-forge init --template n8n`) is the easiest entry point — it includes a ready-made workflow, example credentials, and documentation for connecting to a self-hosted n8n instance.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o, --output <file>` | `n8n-workflow.json` | Output file path for the generated workflow JSON |
+| `--mcp-url <url>` | `http://localhost:3100/sse` | MCP server SSE endpoint the workflow nodes should connect to |
+
+## Examples
+
+### Basic usage
+
+```bash
+rag-forge n8n
+```
+
+### Export to a custom file name
+
+```bash
+rag-forge n8n --output ./workflows/rag-pipeline.json
+```
+
+### Target a remote MCP server
+
+```bash
+rag-forge n8n --mcp-url https://rag.example.com/sse --output ./workflows/prod.json
+```
+
+## Related commands
+
+- [n8n Template](/templates/n8n) — scaffold a project pre-wired for n8n from the start
+- [`rag-forge serve`](/cli/serve) — start the MCP server that the exported workflow connects to

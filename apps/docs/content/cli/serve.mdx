@@ -1,0 +1,55 @@
+---
+title: rag-forge serve
+---
+
+# rag-forge serve
+
+> Start the RAG-Forge server
+
+## Synopsis
+
+```bash
+rag-forge serve --mcp [options]
+```
+
+## Description
+
+`serve` launches the RAG-Forge MCP (Model Context Protocol) server, which exposes your RAG pipeline as a set of tools that AI assistants — such as Claude Desktop or any MCP-compatible client — can call directly.
+
+The `--mcp` flag is required. Without it the command exits with an error.
+
+By default the server starts on stdio transport, which is the correct mode for local AI assistant integration (e.g., Claude Desktop config). Pass `--transport http` to start an SSE-based HTTP server instead, which is useful for remote clients, n8n workflows, or browser-based tooling. The HTTP server listens on `http://localhost:<port>/sse`.
+
+The MCP server binary must be built before running this command. If it has not been built yet, run `pnpm run build` from the repository root first.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--mcp` | — | Launch the MCP server (required) |
+| `--transport <type>` | `stdio` | Transport mode: `stdio` \| `http` |
+| `-p, --port <number>` | `3100` | Port number for HTTP transport |
+
+## Examples
+
+### Start the MCP server on stdio (for Claude Desktop)
+
+```bash
+rag-forge serve --mcp
+```
+
+### Start the MCP server on HTTP for remote clients
+
+```bash
+rag-forge serve --mcp --transport http
+```
+
+### Start the MCP server on a custom HTTP port
+
+```bash
+rag-forge serve --mcp --transport http --port 4000
+```
+
+## Related commands
+
+- [MCP Overview](/mcp/overview) — how to connect AI assistants to the RAG-Forge MCP server

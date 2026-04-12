@@ -1808,8 +1808,6 @@ gh pr create --title "feat(site): add Next.js 16 landing page at apps/site" --bo
 - Real GitHub stars/download counts via build-time fetch (manual constants for now in \`lib/content.ts\`)
 - Documentation site (separate sub-project)
 - Assessment booking flow (separate sub-project)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```

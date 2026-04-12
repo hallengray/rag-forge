@@ -305,7 +305,13 @@ def cmd_inspect(args: argparse.Namespace) -> None:
     collection = args.collection or "rag-forge"
     chunk_id = args.chunk_id
     store = QdrantStore()
-    result = store.get_by_id(collection, chunk_id)
+
+    try:
+        result = store.get_by_id(collection, chunk_id)
+    except Exception as e:
+        json.dump({"found": False, "chunk_id": chunk_id, "collection": collection, "error": str(e)}, sys.stdout)
+        return
+
     if result is None:
         json.dump({"found": False, "chunk_id": chunk_id, "collection": collection}, sys.stdout)
         return

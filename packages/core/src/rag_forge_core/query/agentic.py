@@ -143,7 +143,10 @@ class AgenticQueryEngine:
             response = self._generator.generate(_DECOMPOSE_SYSTEM_PROMPT, question)
             sub_queries = json.loads(response)
             if isinstance(sub_queries, list) and len(sub_queries) > 0:
-                return [str(q) for q in sub_queries]
+                # Filter to non-empty strings only, cap at 5
+                valid = [str(q).strip() for q in sub_queries if isinstance(q, str) and q.strip()]
+                if valid:
+                    return valid[:5]
         except (json.JSONDecodeError, TypeError, ValueError):
             logger.warning("Query decomposition returned invalid JSON, using original question")
         return [question]

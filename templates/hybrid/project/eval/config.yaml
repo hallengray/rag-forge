@@ -11,7 +11,7 @@ thresholds:
   context_relevance: 0.80
   faithfulness: 0.85
   answer_relevance: 0.80
-  hallucination_rate: 0.05
+  hallucination: 0.95
 
 ci_gate:
   metric: faithfulness

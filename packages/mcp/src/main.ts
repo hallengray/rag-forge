@@ -7,6 +7,11 @@ const portIdx = args.indexOf("--port");
 const portArg = portIdx >= 0 ? args[portIdx + 1] : undefined;
 const port = portArg !== undefined ? parseInt(portArg, 10) : 3100;
 
+if (transport === "http" && (Number.isNaN(port) || port < 1 || port > 65535)) {
+  console.error(`Invalid port: ${String(portArg ?? port)}. Must be 1-65535.`);
+  process.exit(1);
+}
+
 async function main(): Promise<void> {
   if (transport === "http") {
     const { startHttpServer } = await import("./transports/http.js");

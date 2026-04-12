@@ -333,6 +333,36 @@ def cmd_status(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_cache_stats(args: argparse.Namespace) -> None:
+    """Report semantic cache statistics."""
+    stats_path = Path("./cache/stats.json")
+    if stats_path.exists():
+        try:
+            with stats_path.open() as f:
+                stats = json.load(f)
+            output = {
+                "success": True,
+                "hits": stats.get("hits", 0),
+                "misses": stats.get("misses", 0),
+                "total": stats.get("total", 0),
+                "hit_rate": stats.get("hits", 0) / max(stats.get("total", 1), 1),
+                "source": "persisted",
+            }
+        except Exception as e:
+            output = {"success": False, "error": f"Failed to read cache stats: {e}"}
+    else:
+        output = {
+            "success": True,
+            "hits": 0,
+            "misses": 0,
+            "total": 0,
+            "hit_rate": 0.0,
+            "source": "none",
+            "message": "No cache data available — cache stats are tracked during MCP server sessions",
+        }
+    json.dump(output, sys.stdout)
+
+
 def cmd_inspect(args: argparse.Namespace) -> None:
     """Inspect a specific chunk by ID."""
     collection = args.collection or "rag-forge"
@@ -475,6 +505,10 @@ def main() -> None:
     status_parser = subparsers.add_parser("status", help="Check pipeline status")
     status_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
+    cache_parser = subparsers.add_parser("cache-stats", help="Show semantic cache stats")
+    # cache-stats takes no arguments — suppress unused variable warning
+    _ = cache_parser
+
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a chunk by ID")
     inspect_parser.add_argument("--chunk-id", required=True, help="The chunk ID to inspect")
     inspect_parser.add_argument("--collection", help="Collection name", default="rag-forge")
@@ -492,6 +526,8 @@ def main() -> None:
         cmd_query(args)
     elif args.command == "status":
         cmd_status(args)
+    elif args.command == "cache-stats":
+        cmd_cache_stats(args)
     elif args.command == "inspect":
         cmd_inspect(args)
     elif args.command == "guardrails-test":

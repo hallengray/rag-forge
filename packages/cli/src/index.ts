@@ -9,6 +9,9 @@ import { registerCostCommand } from "./commands/cost.js";
 import { registerGoldenCommand } from "./commands/golden.js";
 import { registerAssessCommand } from "./commands/assess.js";
 import { registerGuardrailsCommand } from "./commands/guardrails.js";
+import { registerReportCommand } from "./commands/report.js";
+import { registerCacheCommand } from "./commands/cache.js";
+import { registerInspectCommand } from "./commands/inspect.js";
 
 const program = new Command();
 
@@ -29,5 +32,8 @@ registerCostCommand(program);
 registerGoldenCommand(program);
 registerAssessCommand(program);
 registerGuardrailsCommand(program);
+registerReportCommand(program);
+registerCacheCommand(program);
+registerInspectCommand(program);
 
 program.parse();

@@ -1,0 +1,14 @@
+[
+  {
+    "query": "What is the main topic of this document?",
+    "expected_answer_keywords": ["topic", "document"],
+    "difficulty": "easy",
+    "topic": "general"
+  },
+  {
+    "query": "What are the key concepts discussed?",
+    "expected_answer_keywords": ["concepts", "key"],
+    "difficulty": "medium",
+    "topic": "general"
+  }
+]

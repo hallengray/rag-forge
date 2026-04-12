@@ -3,6 +3,7 @@ import { registerInitCommand } from "./commands/init.js";
 import { registerIndexCommand } from "./commands/index.js";
 import { registerAuditCommand } from "./commands/audit.js";
 import { registerQueryCommand } from "./commands/query.js";
+import { registerServeCommand } from "./commands/serve.js";
 
 const program = new Command();
 
@@ -17,5 +18,6 @@ registerInitCommand(program);
 registerIndexCommand(program);
 registerAuditCommand(program);
 registerQueryCommand(program);
+registerServeCommand(program);
 
 program.parse();

@@ -1,0 +1,20 @@
+[
+  {
+    "query": "What is RAG-Forge?",
+    "expected_answer_keywords": ["CLI", "toolkit", "RAG", "evaluation"],
+    "difficulty": "easy",
+    "topic": "general"
+  },
+  {
+    "query": "How does the evaluation pipeline work?",
+    "expected_answer_keywords": ["metrics", "faithfulness", "audit", "report"],
+    "difficulty": "medium",
+    "topic": "evaluation"
+  },
+  {
+    "query": "What retrieval strategies are supported?",
+    "expected_answer_keywords": ["dense", "sparse", "hybrid", "BM25"],
+    "difficulty": "medium",
+    "topic": "retrieval"
+  }
+]

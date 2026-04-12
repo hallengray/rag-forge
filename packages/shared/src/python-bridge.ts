@@ -1,0 +1,47 @@
+import { execa } from "execa";
+
+export interface PythonBridgeOptions {
+  module: string;
+  args?: string[];
+  cwd?: string;
+}
+
+export interface PythonBridgeResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+export async function runPythonModule(options: PythonBridgeOptions): Promise<PythonBridgeResult> {
+  const { module, args = [], cwd } = options;
+
+  try {
+    const result = await execa("uv", ["run", "python", "-m", module, ...args], {
+      cwd,
+      reject: false,
+      timeout: 300_000, // 5 minute timeout
+    });
+
+    return {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode ?? (result.signal ? 1 : 0),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return {
+      stdout: "",
+      stderr: message,
+      exitCode: 1,
+    };
+  }
+}
+
+export async function checkPythonAvailable(): Promise<boolean> {
+  try {
+    const result = await execa("uv", ["run", "python", "--version"], { reject: false });
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}

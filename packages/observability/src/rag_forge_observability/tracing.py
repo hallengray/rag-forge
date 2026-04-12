@@ -39,6 +39,8 @@ class TracingManager:
 
     def enable(self) -> None:
         """Initialize OpenTelemetry tracing if OTLP endpoint is configured."""
+        if self._enabled:
+            return
         endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
         if not endpoint:
             return
@@ -66,3 +68,5 @@ class TracingManager:
         """Flush pending spans and shut down the tracer provider."""
         if self._provider is not None:
             self._provider.shutdown()
+            self._provider = None
+        self._enabled = False

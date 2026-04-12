@@ -122,7 +122,7 @@ def cmd_index(args: argparse.Namespace) -> None:
 
     tracing = TracingManager()
     tracing.enable()
-    tracer = tracing.get_tracer()
+    tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
     pipeline = IngestionPipeline(
         parser=DirectoryParser(),
@@ -235,7 +235,7 @@ def cmd_query(args: argparse.Namespace) -> None:
 
     tracing = TracingManager()
     tracing.enable()
-    tracer = tracing.get_tracer()
+    tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
     engine = QueryEngine(
         retriever=retriever,

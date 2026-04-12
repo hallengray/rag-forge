@@ -19,7 +19,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
 
     tracing = TracingManager()
     tracing.enable()
-    tracer = tracing.get_tracer()
+    tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
     config = AuditConfig(
         input_path=Path(args.input) if args.input else None,

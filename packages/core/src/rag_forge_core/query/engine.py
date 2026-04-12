@@ -1,16 +1,21 @@
 """RAG query engine: retrieve relevant chunks → generate answer."""
 
+from __future__ import annotations
+
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opentelemetry import trace
-
-from rag_forge_core.generation.base import GenerationProvider
-from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
 from rag_forge_core.retrieval.hybrid import HybridRetriever
-from rag_forge_core.security.input_guard import InputGuard
-from rag_forge_core.security.output_guard import OutputGuard
+
+if TYPE_CHECKING:
+    from opentelemetry import trace
+
+    from rag_forge_core.context.semantic_cache import SemanticCache
+    from rag_forge_core.generation.base import GenerationProvider
+    from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
+    from rag_forge_core.security.input_guard import InputGuard
+    from rag_forge_core.security.output_guard import OutputGuard
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question based ONLY on the "
@@ -42,6 +47,7 @@ class QueryEngine:
         input_guard: InputGuard | None = None,
         output_guard: OutputGuard | None = None,
         tracer: trace.Tracer | None = None,
+        cache: SemanticCache | None = None,
     ) -> None:
         self._retriever = retriever
         self._generator = generator
@@ -49,6 +55,7 @@ class QueryEngine:
         self._input_guard = input_guard
         self._output_guard = output_guard
         self._tracer = tracer
+        self._cache = cache
 
     def _span(self, name: str) -> Any:
         """Return an active span context manager, or a no-op if no tracer is configured."""
@@ -59,7 +66,8 @@ class QueryEngine:
     def query(self, question: str, alpha: float | None = None, user_id: str = "default") -> QueryResult:
         """Execute a RAG query. Optional alpha override for hybrid retrieval."""
         with self._span("rag-forge.query"):
-            # 1. Input guard
+            # 1. Input guard — always runs first so cached results cannot
+            #    bypass rate limiting, injection detection, or PII scanning.
             if self._input_guard is not None:
                 with self._span("rag-forge.input_guard") as span:
                     guard_result = self._input_guard.check(question, user_id=user_id)
@@ -76,7 +84,16 @@ class QueryEngine:
                             blocked_reason=guard_result.reason,
                         )
 
-            # 2. Retrieve
+            # 2. Cache check — after input guard so every query is validated.
+            if self._cache is not None:
+                cached = self._cache.get(question)
+                if cached is not None:
+                    with self._span("rag-forge.cache_hit") as span:
+                        if span is not None:
+                            span.set_attribute("cache_hit", True)
+                    return cached
+
+            # 3. Retrieve
             retriever = self._retriever
 
             if alpha is not None and isinstance(retriever, HybridRetriever):
@@ -101,7 +118,7 @@ class QueryEngine:
                     chunks_retrieved=0,
                 )
 
-            # 3. Generate
+            # 4. Generate
             context_text = "\n\n".join(
                 f"[Source {i + 1}]: {r.text}" for i, r in enumerate(results)
             )
@@ -111,7 +128,7 @@ class QueryEngine:
                 if span is not None:
                     span.set_attribute("model", self._generator.model_name())
 
-            # 4. Output guard
+            # 5. Output guard
             if self._output_guard is not None:
                 chunk_ids = [r.chunk_id for r in results]
                 contexts = [r.text for r in results]
@@ -136,9 +153,14 @@ class QueryEngine:
                             blocked_reason=output_result.reason,
                         )
 
-            return QueryResult(
+            result = QueryResult(
                 answer=answer,
                 sources=results,
                 model_used=self._generator.model_name(),
                 chunks_retrieved=len(results),
             )
+
+            if self._cache is not None:
+                self._cache.set(question, result)
+
+            return result

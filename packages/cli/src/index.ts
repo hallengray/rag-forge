@@ -12,6 +12,10 @@ import { registerGuardrailsCommand } from "./commands/guardrails.js";
 import { registerReportCommand } from "./commands/report.js";
 import { registerCacheCommand } from "./commands/cache.js";
 import { registerInspectCommand } from "./commands/inspect.js";
+import { registerAddCommand } from "./commands/add.js";
+import { registerParseCommand } from "./commands/parse.js";
+import { registerChunkCommand } from "./commands/chunk.js";
+import { registerN8nCommand } from "./commands/n8n.js";
 
 const program = new Command();
 
@@ -35,5 +39,9 @@ registerGuardrailsCommand(program);
 registerReportCommand(program);
 registerCacheCommand(program);
 registerInspectCommand(program);
+registerAddCommand(program);
+registerParseCommand(program);
+registerChunkCommand(program);
+registerN8nCommand(program);
 
 program.parse();

@@ -1,0 +1,15 @@
+[
+  {
+    "query": "What is the main topic of this document?",
+    "expected_answer_keywords": ["topic", "document"],
+    "difficulty": "easy",
+    "topic": "general"
+  },
+  {
+    "query": "Compare the key concepts discussed in the documents",
+    "expected_answer_keywords": ["compare", "concepts"],
+    "difficulty": "hard",
+    "topic": "multi-hop",
+    "requires_multi_hop": true
+  }
+]

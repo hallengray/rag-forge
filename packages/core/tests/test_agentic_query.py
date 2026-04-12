@@ -51,7 +51,9 @@ class TestAgenticQueryEngine:
         engine, _, _ = _setup_engine()
         sub_queries = engine._decompose("Compare Python and Rust for data science")
         assert isinstance(sub_queries, list)
-        assert len(sub_queries) >= 1
+        assert len(sub_queries) == 2
+        assert sub_queries[0] == "What is Python used for?"
+        assert sub_queries[1] == "What is Rust used for?"
 
     def test_invalid_decomposition_falls_back(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

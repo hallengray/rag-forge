@@ -31,8 +31,12 @@ def _determine_root_cause(
     retrieval_fail = sample_metrics.get("context_relevance", 1.0) < thresholds.get(
         "context_relevance", 0.80
     )
-    generation_fail = sample_metrics.get("faithfulness", 1.0) < thresholds.get(
-        "faithfulness", 0.85
+    generation_fail = (
+        sample_metrics.get("faithfulness", 1.0) < thresholds.get("faithfulness", 0.85)
+        or sample_metrics.get("answer_relevance", 1.0)
+        < thresholds.get("answer_relevance", 0.80)
+        or sample_metrics.get("hallucination", 1.0)
+        < thresholds.get("hallucination", 0.95)
     )
     if retrieval_fail and generation_fail:
         return "both"

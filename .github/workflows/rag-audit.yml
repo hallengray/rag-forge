@@ -6,8 +6,11 @@ on:
     paths:
       - "packages/core/src/**"
       - "packages/evaluator/src/**"
+      - "packages/evaluator/pyproject.toml"
+      - "packages/cli/src/**"
       - "eval/**"
       - "rag-forge.config.*"
+      - ".github/workflows/rag-audit.yml"
 
 jobs:
   audit:

@@ -18,6 +18,9 @@ class DeepEvalEvaluator(EvaluatorInterface):
         self._thresholds = thresholds or {}
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
+        if not samples:
+            return EvaluationResult(metrics=[], overall_score=0.0, samples_evaluated=0, passed=False)
+
         from deepeval import evaluate as deepeval_evaluate
         from deepeval.metrics import (
             AnswerRelevancyMetric,
@@ -42,7 +45,10 @@ class DeepEvalEvaluator(EvaluatorInterface):
         metric_names = ["faithfulness", "contextual_relevancy", "answer_relevancy", "hallucination"]
         aggregated: list[MetricResult] = []
         for i, name in enumerate(metric_names):
-            score = float(metrics[i].score) if hasattr(metrics[i], "score") else 0.0
+            raw_score = float(metrics[i].score) if hasattr(metrics[i], "score") else 0.0
+            # HallucinationMetric is inverted in DeepEval (0 = no hallucination, 1 = all hallucinated).
+            # Our system treats higher as better, so invert the score.
+            score = (1.0 - raw_score) if name == "hallucination" else raw_score
             threshold = float(metrics[i].threshold)
             aggregated.append(MetricResult(name=name, score=round(score, 4), threshold=threshold, passed=score >= threshold))
 

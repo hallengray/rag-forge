@@ -28,7 +28,13 @@ class AuditHistory:
         entries = self.load()
         entries.append(entry)
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(json.dumps([asdict(e) for e in entries], indent=2), encoding="utf-8")
+        # Atomic write: write to temp file then rename
+        tmp_path = self._path.with_suffix(".json.tmp")
+        tmp_path.write_text(
+            json.dumps([asdict(e) for e in entries], indent=2),
+            encoding="utf-8",
+        )
+        tmp_path.replace(self._path)
 
     def get_previous(self) -> AuditHistoryEntry | None:
         entries = self.load()

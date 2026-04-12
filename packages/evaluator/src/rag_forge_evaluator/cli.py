@@ -58,6 +58,7 @@ def main() -> None:
     audit_parser.add_argument("--config-json", help="JSON config from TS CLI")
     audit_parser.add_argument(
         "--evaluator", default="llm-judge",
+        choices=["llm-judge", "ragas", "deepeval"],
         help="Evaluator engine: llm-judge | ragas | deepeval",
     )
 

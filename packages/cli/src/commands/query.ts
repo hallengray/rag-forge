@@ -54,6 +54,9 @@ export function registerQueryCommand(program: Command): void {
       "0.85",
     )
     .option("--rate-limit <number>", "Max queries per minute", "60")
+    .option("--cache", "Enable semantic query caching")
+    .option("--cache-ttl <seconds>", "Cache TTL in seconds", "3600")
+    .option("--cache-similarity <threshold>", "Cosine similarity threshold", "0.95")
     .description("Execute a RAG query against the indexed pipeline")
     .action(
       async (
@@ -71,6 +74,9 @@ export function registerQueryCommand(program: Command): void {
           outputGuard?: boolean;
           faithfulnessThreshold: string;
           rateLimit: string;
+          cache?: boolean;
+          cacheTtl: string;
+          cacheSimilarity: string;
         },
       ) => {
         const spinner = ora("Querying pipeline...").start();
@@ -107,6 +113,11 @@ export function registerQueryCommand(program: Command): void {
           }
           args.push("--faithfulness-threshold", options.faithfulnessThreshold);
           args.push("--rate-limit", options.rateLimit);
+          if (options.cache) {
+            args.push("--cache");
+          }
+          args.push("--cache-ttl", options.cacheTtl);
+          args.push("--cache-similarity", options.cacheSimilarity);
 
           const result = await runPythonModule({
             module: "rag_forge_core.cli",

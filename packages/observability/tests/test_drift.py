@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rag_forge_observability.drift import DriftBaseline, DriftDetector, DriftReport
+from rag_forge_observability.drift import DriftBaseline, DriftDetector
 
 
 class TestDriftBaseline:

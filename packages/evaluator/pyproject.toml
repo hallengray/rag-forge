@@ -14,6 +14,7 @@ dependencies = [
 [project.optional-dependencies]
 ragas = ["ragas>=0.2"]
 deepeval = ["deepeval>=1.0"]
+pdf = ["playwright>=1.40"]
 
 [build-system]
 requires = ["hatchling"]

@@ -31,10 +31,9 @@ export function registerGuardrailsCommand(program: Command): void {
   guardrails
     .command("test")
     .option("--corpus <file>", "Path to custom adversarial corpus JSON")
-    .option("-c, --collection <name>", "Collection name", "rag-forge")
     .description("Run adversarial prompt test suite against security guards")
     .action(
-      async (options: { corpus?: string; collection: string }) => {
+      async (options: { corpus?: string }) => {
         const spinner = ora("Running adversarial tests...").start();
 
         try {
@@ -42,7 +41,6 @@ export function registerGuardrailsCommand(program: Command): void {
           if (options.corpus) {
             args.push("--corpus", options.corpus);
           }
-          args.push("--collection", options.collection);
 
           const result = await runPythonModule({
             module: "rag_forge_core.cli",

@@ -24,13 +24,11 @@ export function registerAssessCommand(program: Command): void {
     .command("assess")
     .option("--config <json>", "Pipeline config as JSON string")
     .option("--audit-report <file>", "Path to latest audit JSON report")
-    .option("-c, --collection <name>", "Collection name", "rag-forge")
     .description("Run RAG Maturity Model assessment")
     .action(
       async (options: {
         config?: string;
         auditReport?: string;
-        collection: string;
       }) => {
         const spinner = ora("Running RMM assessment...").start();
 
@@ -42,7 +40,6 @@ export function registerAssessCommand(program: Command): void {
           if (options.auditReport) {
             args.push("--audit-report", options.auditReport);
           }
-          args.push("--collection", options.collection);
 
           const result = await runPythonModule({
             module: "rag_forge_evaluator.cli",

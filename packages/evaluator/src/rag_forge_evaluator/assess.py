@@ -49,7 +49,10 @@ class RMMAssessor:
             data = json.load(f)
         metrics: dict[str, float] = {}
         for m in data.get("metrics", []):
-            metrics[m["name"]] = m["score"]
+            try:
+                metrics[str(m["name"])] = float(m["score"])
+            except (KeyError, ValueError, TypeError):
+                continue
         return metrics
 
     def assess(
@@ -141,13 +144,16 @@ class RMMAssessor:
                 "audit" if "context_relevance" in metrics else "unknown",
             ),
         ]
-        if input_guard and output_guard and faith_ok and ctx_ok:
-            current_level = max(current_level, 3)
+        level3_passed = (
+            current_level >= 2 and input_guard and output_guard and faith_ok and ctx_ok
+        )
+        if level3_passed:
+            current_level = 3
         all_criteria.append(
             {
                 "level": 3,
                 "name": "Better Trust",
-                "passed": current_level >= 3,
+                "passed": level3_passed,
                 "checks": _to_dict(checks_3),
             }
         )

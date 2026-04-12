@@ -481,7 +481,6 @@ def main() -> None:
 
     guardrails_test_parser = subparsers.add_parser("guardrails-test", help="Run adversarial test suite")
     guardrails_test_parser.add_argument("--corpus", help="Path to custom adversarial corpus JSON")
-    guardrails_test_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
     guardrails_scan_parser = subparsers.add_parser("guardrails-scan-pii", help="Scan collection for PII")
     guardrails_scan_parser.add_argument("--collection", help="Collection name", default="rag-forge")

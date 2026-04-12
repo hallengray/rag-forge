@@ -176,7 +176,8 @@ def cmd_assess(args: argparse.Namespace) -> None:
             "criteria": result.criteria,
         }
     except Exception as e:
-        output = {"success": False, "error": str(e)}
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+        sys.exit(1)
     json.dump(output, sys.stdout)
 
 
@@ -217,7 +218,6 @@ def main() -> None:
     assess_parser = subparsers.add_parser("assess", help="Run RMM assessment")
     assess_parser.add_argument("--config-json", help="Pipeline config as JSON")
     assess_parser.add_argument("--audit-report", help="Path to latest audit JSON report")
-    assess_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
     args = parser.parse_args()
     if args.command == "audit":

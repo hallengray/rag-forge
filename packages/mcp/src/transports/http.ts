@@ -40,7 +40,7 @@ export async function startHttpServer(port: number): Promise<void> {
         res.writeHead(404);
         res.end("Not found");
       }
-    } catch (error) {
+    } catch {
       if (!res.headersSent) {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Internal server error" }));

@@ -88,7 +88,7 @@ class PluginRegistry:
 
 def get_global_registry() -> PluginRegistry:
     """Get or create the global plugin registry singleton (thread-safe)."""
-    global _global_registry  # noqa: PLW0603
+    global _global_registry
     if _global_registry is not None:
         return _global_registry
     with _global_registry_lock:

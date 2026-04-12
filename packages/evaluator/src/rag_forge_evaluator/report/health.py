@@ -38,7 +38,7 @@ class PipelineHealth:
 
         chunk_count = 0
         try:
-            from rag_forge_core.storage.qdrant import QdrantStore  # type: ignore[import-untyped]
+            from rag_forge_core.storage.qdrant import QdrantStore
 
             store = QdrantStore()
             chunk_count = store.count(collection_name)

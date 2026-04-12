@@ -19,12 +19,13 @@ export async function runPythonModule(options: PythonBridgeOptions): Promise<Pyt
     const result = await execa("uv", ["run", "python", "-m", module, ...args], {
       cwd,
       reject: false,
+      timeout: 300_000, // 5 minute timeout
     });
 
     return {
       stdout: result.stdout,
       stderr: result.stderr,
-      exitCode: result.exitCode ?? 0,
+      exitCode: result.exitCode ?? (result.signal ? 1 : 0),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

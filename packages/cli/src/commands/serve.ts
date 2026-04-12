@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
@@ -22,9 +23,14 @@ export function registerServeCommand(program: Command): void {
 
       const mcpMain = getMcpMainPath();
 
+      if (!existsSync(mcpMain)) {
+        logger.error(`MCP server not found at ${mcpMain}. Run 'pnpm run build' first.`);
+        process.exit(1);
+      }
+
       logger.info("Starting MCP server on stdio...");
 
-      const child = spawn("node", [mcpMain], {
+      const child = spawn(process.execPath, [mcpMain], {
         stdio: "inherit",
       });
 

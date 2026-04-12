@@ -19,5 +19,5 @@ vector_db = "qdrant"
 embedding_model = "BAAI/bge-m3"
 retrieval_strategy = "hybrid"
 retrieval_alpha = 0.6
-reranker = "cohere"
+reranker = "none"
 enrich = true

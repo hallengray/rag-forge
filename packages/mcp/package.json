@@ -2,6 +2,24 @@
   "name": "@rag-forge/mcp",
   "version": "0.1.0",
   "description": "MCP server exposing RAG-Forge pipeline operations as agent-callable tools",
+  "author": "Femi Adedayo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hallengray/rag-forge.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/hallengray/rag-forge#readme",
+  "bugs": {
+    "url": "https://github.com/hallengray/rag-forge/issues"
+  },
+  "keywords": [
+    "rag",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "anthropic",
+    "claude"
+  ],
   "type": "module",
   "exports": {
     ".": {

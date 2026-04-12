@@ -4,12 +4,30 @@ version = "0.1.0"
 description = "Evaluation engine: RAGAS, DeepEval, LLM-as-Judge, and audit report generation"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [{ name = "Femi Adedayo" }]
+keywords = ["rag", "evaluation", "ragas", "deepeval", "llm-as-judge", "rmm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+readme = "README.md"
 dependencies = [
     "pydantic>=2.0",
     "jinja2>=3.1",
     "anthropic>=0.30",
     "openai>=1.30",
 ]
+
+[project.urls]
+Homepage = "https://github.com/hallengray/rag-forge"
+Repository = "https://github.com/hallengray/rag-forge"
+Issues = "https://github.com/hallengray/rag-forge/issues"
+Documentation = "https://github.com/hallengray/rag-forge#readme"
 
 [project.optional-dependencies]
 ragas = ["ragas>=0.2"]

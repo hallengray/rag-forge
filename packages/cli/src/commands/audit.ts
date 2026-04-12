@@ -19,6 +19,8 @@ interface AuditResult {
   samples_evaluated: number;
   metrics: AuditMetric[];
   report_path: string;
+  json_report_path: string;
+  evaluator_engine: string;
 }
 
 export function registerAuditCommand(program: Command): void {
@@ -28,6 +30,7 @@ export function registerAuditCommand(program: Command): void {
     .option("-g, --golden-set <file>", "Path to golden set JSON file")
     .option("-j, --judge <model>", "Judge model: mock | claude | openai", "mock")
     .option("-o, --output <dir>", "Output directory for reports", "./reports")
+    .option("--evaluator <engine>", "Evaluator engine: llm-judge | ragas | deepeval", "llm-judge")
     .description("Run evaluation on pipeline telemetry and generate audit report")
     .action(
       async (options: {
@@ -35,6 +38,7 @@ export function registerAuditCommand(program: Command): void {
         goldenSet?: string;
         judge: string;
         output: string;
+        evaluator: string;
       }) => {
         if (!options.input && !options.goldenSet) {
           logger.error("Either --input or --golden-set is required");
@@ -44,7 +48,7 @@ export function registerAuditCommand(program: Command): void {
         const spinner = ora("Running RAG pipeline audit...").start();
 
         try {
-          const args = ["audit", "--judge", options.judge, "--output", options.output];
+          const args = ["audit", "--judge", options.judge, "--output", options.output, "--evaluator", options.evaluator];
 
           if (options.input) {
             args.push("--input", options.input);
@@ -86,6 +90,7 @@ export function registerAuditCommand(program: Command): void {
             );
           }
 
+          logger.info(`Evaluator: ${output.evaluator_engine}`);
           logger.success(`Report saved to: ${output.report_path}`);
         } catch (error) {
           spinner.fail("Audit failed");

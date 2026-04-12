@@ -1,0 +1,55 @@
+---
+title: agentic template
+---
+
+# agentic template
+
+> Multi-query decomposition over hybrid retrieval — for applications that must answer complex, multi-hop questions.
+
+## What you get
+
+```
+project/
+├── src/
+│   ├── pipeline.py       # Agentic query loop with multi-query decomposition
+│   └── config.py         # Pipeline configuration
+├── eval/
+│   ├── golden_set.json   # Evaluation dataset
+│   └── config.yaml       # Evaluation thresholds and CI gate settings
+├── pyproject.toml        # Python dependencies and RAG-Forge config
+└── README.md
+```
+
+## Default configuration
+
+The agentic template enables `agent_mode`, which activates multi-query decomposition: a complex question is broken into sub-queries, each retrieved independently, and the results are synthesised into a single answer. Retrieval is hybrid (BM25 + vector) with the same `alpha = 0.6` default as the hybrid template.
+
+```toml
+# pyproject.toml [tool.rag-forge] section
+[tool.rag-forge]
+template = "agentic"
+chunk_strategy = "recursive"
+chunk_size = 512
+overlap_ratio = 0.1
+vector_db = "qdrant"
+embedding_model = "BAAI/bge-m3"
+retrieval_strategy = "hybrid"
+retrieval_alpha = 0.6
+agent_mode = true
+```
+
+Invoke agentic mode at query time with the `--agent-mode` flag:
+
+```bash
+rag-forge query "Compare the refund policies across all product lines" --agent-mode
+```
+
+## Recommended next steps
+
+1. Index your documents the same way as hybrid: `rag-forge index --source ./docs --sparse-index-path .rag-forge/sparse`.
+2. Build a golden set that includes multi-hop questions (questions requiring facts from two or more separate documents) so your evaluation reflects the real workload.
+3. Run `rag-forge audit --golden-set eval/golden_set.json` and review per-question faithfulness scores to identify decomposition failures.
+
+## When to upgrade
+
+Move to the `enterprise` template when you need tenant isolation, PII scrubbing on inputs and outputs, audit logging, or CI/CD quality gates in a regulated environment.

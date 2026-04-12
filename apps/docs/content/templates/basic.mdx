@@ -1,0 +1,48 @@
+---
+title: basic template
+---
+
+# basic template
+
+> Vector-only RAG pipeline for developers building their first production-grade document Q&A system.
+
+## What you get
+
+```
+project/
+├── src/
+│   ├── pipeline.py       # Main RAG pipeline — ingest and query
+│   └── config.py         # Pipeline configuration
+├── eval/
+│   ├── golden_set.json   # Evaluation dataset (add your Q&A pairs)
+│   └── config.yaml       # Evaluation thresholds and CI gate settings
+├── pyproject.toml        # Python dependencies and RAG-Forge config
+└── README.md
+```
+
+## Default configuration
+
+The basic template uses recursive chunking with dense vector retrieval backed by Qdrant. There is no BM25 or reranker — retrieval is purely embedding-based.
+
+```toml
+# pyproject.toml [tool.rag-forge] section
+[tool.rag-forge]
+template = "basic"
+chunk_strategy = "recursive"
+chunk_size = 512
+overlap_ratio = 0.1
+vector_db = "qdrant"
+embedding_model = "BAAI/bge-m3"
+```
+
+Evaluation is gated on `faithfulness >= 0.85` and tracks `context_relevance`, `faithfulness`, and `answer_relevance`.
+
+## Recommended next steps
+
+1. Add your documents to `./docs` and run `rag-forge index --source ./docs` to build the vector index.
+2. Add representative question-answer pairs to `eval/golden_set.json`, then run `rag-forge audit --golden-set eval/golden_set.json` to measure baseline quality.
+3. Swap the embedding model in `pyproject.toml` to match the language or domain of your documents (e.g., a multilingual model for non-English content).
+
+## When to upgrade
+
+Move to the `hybrid` template when vector-only retrieval misses keyword-heavy queries — for example, exact product codes, technical identifiers, or any domain where BM25 recall complements dense retrieval.

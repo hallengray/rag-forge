@@ -1,0 +1,58 @@
+---
+title: hybrid template
+---
+
+# hybrid template
+
+> BM25 + vector retrieval with contextual enrichment — for teams hitting recall ceilings with vector-only search.
+
+## What you get
+
+```
+project/
+├── src/
+│   ├── pipeline.py       # Hybrid ingest (enrich=True) and query (alpha=0.6)
+│   └── config.py         # Pipeline configuration
+├── eval/
+│   ├── golden_set.json   # Evaluation dataset
+│   └── config.yaml       # Evaluation thresholds and CI gate settings
+├── pyproject.toml        # Python dependencies including rag-forge-core[cohere]
+└── README.md
+```
+
+## Default configuration
+
+The hybrid template blends dense vector scores with BM25 sparse scores using a weighted `alpha` parameter. Contextual enrichment (`enrich = true`) annotates each chunk with surrounding context before indexing. The Cohere reranker is available via the `cohere` extra but is set to `none` by default — enable it when you need a second-pass ranking pass.
+
+```toml
+# pyproject.toml [tool.rag-forge] section
+[tool.rag-forge]
+template = "hybrid"
+chunk_strategy = "recursive"
+chunk_size = 512
+overlap_ratio = 0.1
+vector_db = "qdrant"
+embedding_model = "BAAI/bge-m3"
+retrieval_strategy = "hybrid"
+retrieval_alpha = 0.6
+reranker = "none"
+enrich = true
+```
+
+`alpha = 0.6` weights results 60% toward dense and 40% toward sparse. Tune this value based on your domain: lower alpha for keyword-heavy corpora, higher for semantic queries.
+
+To enable Cohere reranking at query time:
+
+```bash
+rag-forge query "your question" --strategy hybrid --alpha 0.6 --reranker cohere
+```
+
+## Recommended next steps
+
+1. Run `rag-forge index --source ./docs --enrich --sparse-index-path .rag-forge/sparse` to build both the dense and sparse indexes.
+2. Experiment with `--alpha` between `0.3` and `0.8` to find the recall/precision sweet spot for your corpus.
+3. Set `COHERE_API_KEY` in your environment and test `--reranker cohere` to see whether a second-pass rerank improves answer quality on your golden set.
+
+## When to upgrade
+
+Move to the `agentic` template when users ask multi-hop questions that require decomposing a single query into sub-questions and synthesising answers across multiple retrieval passes.

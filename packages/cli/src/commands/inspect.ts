@@ -57,7 +57,7 @@ export function registerInspectCommand(program: Command): void {
           spinner.succeed(`Chunk found: ${output.chunk_id}`);
           logger.info(`Collection: ${output.collection}`);
 
-          if (output.text) {
+          if (output.text !== undefined) {
             logger.info("Text:");
             logger.info(`  ${output.text}`);
           }

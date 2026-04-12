@@ -7,6 +7,7 @@ standalone HTML dashboard. No LLM calls — pure aggregation.
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -77,18 +78,19 @@ class HealthReportGenerator:
             return ""
 
         audit = health.latest_audit
-        rmm_name = audit.get("rmm_name", "Unknown")
+        rmm_name = escape(str(audit.get("rmm_name", "Unknown")))
         rmm_level = audit.get("rmm_level", 0)
         overall = audit.get("overall_score", 0.0)
 
         metrics_html = ""
         for m in audit.get("metrics", []):
-            status = "PASS" if m.get("passed") else "FAIL"
-            metrics_html += (
-                f"<tr><td>{m['name']}</td>"
-                f"<td>{m['score']:.2f}</td>"
-                f"<td>{status}</td></tr>"
-            )
+            if isinstance(m, dict) and "name" in m and "score" in m:
+                status = "PASS" if m.get("passed") else "FAIL"
+                metrics_html += (
+                    f"<tr><td>{escape(str(m['name']))}</td>"
+                    f"<td>{float(m['score']):.2f}</td>"
+                    f"<td>{status}</td></tr>"
+                )
 
         return f"""
             <div class="section">

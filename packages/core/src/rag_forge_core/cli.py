@@ -340,12 +340,15 @@ def cmd_cache_stats(args: argparse.Namespace) -> None:
         try:
             with stats_path.open() as f:
                 stats = json.load(f)
+            hits = stats.get("hits", 0)
+            misses = stats.get("misses", 0)
+            total = stats.get("total", hits + misses)
             output = {
                 "success": True,
-                "hits": stats.get("hits", 0),
-                "misses": stats.get("misses", 0),
-                "total": stats.get("total", 0),
-                "hit_rate": stats.get("hits", 0) / max(stats.get("total", 1), 1),
+                "hits": hits,
+                "misses": misses,
+                "total": total,
+                "hit_rate": hits / total if total > 0 else 0.0,
                 "source": "persisted",
             }
         except Exception as e:

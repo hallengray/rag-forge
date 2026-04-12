@@ -65,7 +65,7 @@ export function registerReportCommand(program: Command): void {
           logger.info(
             `Drift baseline: ${output.drift_baseline ? "configured" : "not configured"}`,
           );
-          logger.success(`Report saved to: ${output.report_path}`);
+          logger.success(`Report saved to: ${output.report_path ?? "unknown"}`);
         } catch (error) {
           spinner.fail("Report generation failed");
           const message =

@@ -13,8 +13,8 @@ Thank you for your interest in contributing to RAG-Forge! This guide covers ever
 ### Clone and Install
 
 ```bash
-git clone https://github.com/hallengray/RAGforge.git
-cd RAGforge
+git clone https://github.com/hallengray/rag-forge.git
+cd rag-forge
 
 # Install TypeScript dependencies
 pnpm install
@@ -36,7 +36,7 @@ All four commands must pass with zero errors before submitting a PR.
 
 ## Project Structure
 
-```
+```text
 packages/cli/          # TypeScript — CLI interface (Commander.js)
 packages/mcp/          # TypeScript — MCP server
 packages/core/         # Python — RAG pipeline primitives

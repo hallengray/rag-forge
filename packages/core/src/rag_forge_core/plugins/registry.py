@@ -11,10 +11,12 @@ an unknown strategy name.
 
 import importlib.metadata
 import logging
+import threading
 
 _LOG = logging.getLogger(__name__)
 
 _global_registry: "PluginRegistry | None" = None
+_global_registry_lock = threading.Lock()
 
 
 class PluginRegistry:
@@ -85,9 +87,14 @@ class PluginRegistry:
 
 
 def get_global_registry() -> PluginRegistry:
-    """Get or create the global plugin registry singleton."""
-    global _global_registry
-    if _global_registry is None:
-        _global_registry = PluginRegistry()
-        _global_registry.discover_entry_points()
+    """Get or create the global plugin registry singleton (thread-safe)."""
+    global _global_registry  # noqa: PLW0603
+    if _global_registry is not None:
+        return _global_registry
+    with _global_registry_lock:
+        # Double-checked locking
+        if _global_registry is None:
+            registry = PluginRegistry()
+            registry.discover_entry_points()
+            _global_registry = registry
     return _global_registry

@@ -1,6 +1,6 @@
 """RAG query engine: retrieve relevant chunks → generate answer."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from rag_forge_core.generation.base import GenerationProvider
 from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol

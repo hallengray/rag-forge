@@ -1,6 +1,11 @@
 """Tests for PII scanning."""
 
-from rag_forge_core.security.pii import PIIDetection, PIIScanResult, PIIScannerProtocol, RegexPIIScanner
+from rag_forge_core.security.pii import (
+    PIIDetection,
+    PIIScannerProtocol,
+    PIIScanResult,
+    RegexPIIScanner,
+)
 
 
 class TestRegexPIIScanner:
@@ -58,7 +63,7 @@ class TestRegexPIIScanner:
     def test_detection_fields(self) -> None:
         scanner = RegexPIIScanner()
         result = scanner.scan("Email is john@example.com")
-        detection = [d for d in result.detections if d.entity_type == "EMAIL"][0]
+        detection = next(d for d in result.detections if d.entity_type == "EMAIL")
         assert isinstance(detection, PIIDetection)
         assert detection.text == "john@example.com"
         assert isinstance(detection.start, int)

@@ -923,8 +923,6 @@ gh pr create --title "feat: add assess, guardrails test, guardrails scan-pii com
 - [ ] RMM assessor tests pass
 - [ ] TypeScript compiles with zero errors
 - [ ] Build succeeds
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```

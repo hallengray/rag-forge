@@ -1,0 +1,43 @@
+name: RAG Audit Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "eval/**"
+
+jobs:
+  audit:
+    name: RAG Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.11
+      - run: uv sync
+
+      - name: Run RAG Audit
+        run: |
+          uv run python -m rag_forge_evaluator.cli audit \
+            --golden-set eval/golden_set.json \
+            --judge mock \
+            --output ./reports
+
+      - name: Check faithfulness gate
+        run: |
+          SCORE=$(jq -r '.metrics.faithfulness.score' reports/audit-report.json)
+          THRESHOLD="0.85"
+          echo "Faithfulness: ${SCORE} (threshold: ${THRESHOLD})"
+          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
+            echo "::error::Faithfulness score (${SCORE}) below threshold (${THRESHOLD})"
+            exit 1
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-audit-report
+          path: reports/

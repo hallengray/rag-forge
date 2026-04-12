@@ -91,6 +91,104 @@ def _create_reranker(reranker_type: str, cohere_api_key: str | None = None) -> R
     )
 
 
+def cmd_parse(args: argparse.Namespace) -> None:
+    """Preview document extraction without indexing."""
+    try:
+        source = Path(args.source)
+        if not source.is_dir():
+            json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
+            sys.exit(1)
+
+        parser = DirectoryParser()
+        documents, errors = parser.parse_directory(source)
+
+        files_info = []
+        for doc in documents:
+            files_info.append({
+                "path": doc.source_path,
+                "characters": len(doc.text),
+            })
+
+        output = {
+            "success": True,
+            "files_found": len(documents),
+            "files": files_info,
+            "total_characters": sum(f["characters"] for f in files_info),
+            "parse_errors": errors,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_chunk(args: argparse.Namespace) -> None:
+    """Preview chunking without indexing."""
+    try:
+        source = Path(args.source)
+        if not source.is_dir():
+            json.dump({"success": False, "error": f"Source directory not found: {source}"}, sys.stdout)
+            sys.exit(1)
+
+        strategy = args.strategy or "recursive"
+        chunk_size = int(args.chunk_size) if args.chunk_size else 512
+
+        chunk_config = ChunkConfig(strategy=strategy, chunk_size=chunk_size)
+        chunker = create_chunker(config=chunk_config)
+        parser = DirectoryParser()
+
+        documents, _errors = parser.parse_directory(source)
+        all_chunks = []
+        for doc in documents:
+            chunks = chunker.chunk(doc.text, doc.source_path)
+            all_chunks.extend(chunks)
+
+        stats = chunker.stats(all_chunks) if all_chunks else None
+
+        samples = []
+        for chunk in all_chunks[:3]:
+            samples.append({
+                "index": chunk.chunk_index,
+                "source": chunk.source_document,
+                "preview": chunk.text[:100] + ("..." if len(chunk.text) > 100 else ""),
+            })
+
+        output = {
+            "success": True,
+            "strategy": strategy,
+            "chunk_size": chunk_size,
+            "total_chunks": len(all_chunks),
+            "stats": {
+                "avg_chunk_size": stats.avg_chunk_size if stats else 0,
+                "min_chunk_size": stats.min_chunk_size if stats else 0,
+                "max_chunk_size": stats.max_chunk_size if stats else 0,
+                "total_tokens": stats.total_tokens if stats else 0,
+            },
+            "samples": samples,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
+def cmd_n8n_export(args: argparse.Namespace) -> None:
+    """Export pipeline configuration as n8n workflow JSON."""
+    from rag_forge_core.n8n_export import generate_n8n_workflow
+
+    try:
+        mcp_url = args.mcp_url or "http://localhost:3100/sse"
+        output_path = Path(args.output or "n8n-workflow.json")
+        workflow = generate_n8n_workflow(mcp_url=mcp_url)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w") as f:
+            json.dump(workflow, f, indent=2)
+        json.dump(
+            {"success": True, "output_path": str(output_path), "nodes": len(workflow["nodes"])},
+            sys.stdout,
+        )
+    except Exception as e:
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+
+
 def cmd_index(args: argparse.Namespace) -> None:
     """Run the index command."""
     try:
@@ -448,6 +546,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="rag-forge-core")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    parse_parser = subparsers.add_parser("parse", help="Preview document extraction")
+    parse_parser.add_argument("--source", required=True, help="Source directory")
+
+    chunk_parser = subparsers.add_parser("chunk", help="Preview chunking")
+    chunk_parser.add_argument("--source", required=True, help="Source directory")
+    chunk_parser.add_argument("--strategy", default="recursive", help="Chunking strategy")
+    chunk_parser.add_argument("--chunk-size", help="Target chunk size in tokens")
+
+    n8n_parser = subparsers.add_parser("n8n-export", help="Export as n8n workflow")
+    n8n_parser.add_argument("--output", help="Output file path", default="n8n-workflow.json")
+    n8n_parser.add_argument(
+        "--mcp-url", help="MCP server URL", default="http://localhost:3100/sse"
+    )
+
     index_parser = subparsers.add_parser("index", help="Index documents")
     index_parser.add_argument("--source", required=True, help="Source directory")
     index_parser.add_argument("--collection", help="Collection name")
@@ -523,7 +635,13 @@ def main() -> None:
     guardrails_scan_parser.add_argument("--collection", help="Collection name", default="rag-forge")
 
     args = parser.parse_args()
-    if args.command == "index":
+    if args.command == "parse":
+        cmd_parse(args)
+    elif args.command == "chunk":
+        cmd_chunk(args)
+    elif args.command == "n8n-export":
+        cmd_n8n_export(args)
+    elif args.command == "index":
         cmd_index(args)
     elif args.command == "query":
         cmd_query(args)

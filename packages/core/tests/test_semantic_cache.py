@@ -58,6 +58,17 @@ class TestSemanticCache:
         cached = cache.get("What is Python?")
         assert cached is not None
 
+    def test_semantic_match_different_query(self) -> None:
+        """Test that semantically similar but different queries can hit cache."""
+        embedder = MockEmbedder(dimension=384)
+        cache = SemanticCache(embedder=embedder, ttl_seconds=3600, similarity_threshold=0.0)
+        cache.set("What is Python?", _sample_result())
+        # Different query text — must go through embedding similarity path
+        cached = cache.get("Tell me about Python programming")
+        # With threshold=0.0, any non-zero similarity should match
+        assert cached is not None
+        assert cache.stats["semantic_hits"] >= 1
+
     def test_cache_miss_no_embedder(self) -> None:
         cache = SemanticCache(ttl_seconds=3600)
         cache.set("What is Python?", _sample_result())
@@ -79,8 +90,10 @@ class TestSemanticCache:
         cache.set("What is Python?", _sample_result())
         cache.get("What is Python?")
         cache.get("What is Rust?")
-        assert cache.stats["hits"] >= 1
-        assert cache.stats["misses"] >= 1
+        assert cache.stats["hits"] == 1
+        assert cache.stats["misses"] == 1
+        assert cache.stats["exact_hits"] == 1
+        assert cache.stats["semantic_hits"] == 0
 
     def test_result_serialization_round_trip(self) -> None:
         cache = SemanticCache(ttl_seconds=3600)

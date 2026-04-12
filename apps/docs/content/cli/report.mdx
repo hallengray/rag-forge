@@ -1,0 +1,53 @@
+---
+title: rag-forge report
+---
+
+# rag-forge report
+
+> Generate a pipeline health report dashboard
+
+## Synopsis
+
+```bash
+rag-forge report [options]
+```
+
+## Description
+
+`report` aggregates existing pipeline data — indexed chunk counts, the most recent audit JSON report, and drift baseline status — into a single HTML health dashboard. The generated file gives you a quick overview of your pipeline's operational state without requiring any new LLM calls.
+
+Unlike `audit` (which runs evaluation and scores your pipeline) and `assess` (which checks maturity criteria), `report` is purely a presentation layer over data that has already been collected. Run it after an `audit` to produce a shareable artefact, or on a schedule to keep a persistent health record.
+
+The command delegates to the Python `rag_forge_evaluator.cli` module. The output HTML file is written to the directory specified by `--output`.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o, --output <dir>` | `./reports` | Output directory for the generated report |
+| `--collection <name>` | `rag-forge` | Name of the vector store collection to inspect for chunk counts |
+
+## Examples
+
+### Basic usage
+
+```bash
+rag-forge report
+```
+
+### Write to a custom output directory
+
+```bash
+rag-forge report --output ./docs/health
+```
+
+### Report for a named collection
+
+```bash
+rag-forge report --collection my-project --output ./reports/my-project
+```
+
+## Related commands
+
+- [`rag-forge audit`](/cli/audit) — run evaluation to produce the underlying audit data
+- [`rag-forge assess`](/cli/assess) — one-shot RMM maturity assessment

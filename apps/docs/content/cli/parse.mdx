@@ -1,0 +1,46 @@
+---
+title: rag-forge parse
+---
+
+# rag-forge parse
+
+> Preview document extraction without indexing.
+
+## Synopsis
+
+```bash
+rag-forge parse [options]
+```
+
+## Description
+
+`parse` runs the document extraction stage of the pipeline and prints a summary of what was found — file paths and character counts — without writing anything to the vector store. It is a dry-run tool for verifying that your source files are readable and that the parser handles them correctly before you commit to a full `index` run.
+
+The command delegates to the Python `rag_forge_core.cli` module. On success it reports the number of files found, total characters, and per-file character counts. Any files that failed to parse are listed separately as warnings rather than causing a hard failure.
+
+Use `parse` early in the pipeline setup cycle: if files are missing, misencoded, or in an unsupported format, `parse` will surface those errors cheaply.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-s, --source <directory>` | `./docs` | Source directory to parse |
+
+## Examples
+
+### Preview the default docs directory
+
+```bash
+rag-forge parse
+```
+
+### Preview a custom source directory
+
+```bash
+rag-forge parse --source ./content/knowledge-base
+```
+
+## Related commands
+
+- [`rag-forge chunk`](/cli/chunk) — preview chunking output after parsing
+- [`rag-forge index`](/cli/index-command) — run the full parse → chunk → embed → store pipeline

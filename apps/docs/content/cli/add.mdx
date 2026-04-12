@@ -1,0 +1,58 @@
+---
+title: rag-forge add
+---
+
+# rag-forge add
+
+> Add a feature module as editable source code (shadcn/ui model).
+
+## Synopsis
+
+```bash
+rag-forge add <module>
+```
+
+## Description
+
+`add` copies a feature module's source files into your project as fully editable code. This follows the shadcn/ui model: rather than installing a black-box dependency, you own the code from day one and can modify it freely.
+
+`add` is **not** for ingesting documents. Use [`rag-forge index`](/cli/index-command) to load documents into the vector store.
+
+The command reads from a module manifest (`src/modules/manifest.json`) which maps each module name to the list of source files it contributes and any Python dependencies to install. If a destination file already exists it is skipped rather than overwritten, so `add` is safe to re-run.
+
+After copying files, `add` prints a `pip install` command for any required Python packages the module depends on.
+
+## Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `module` | Yes | Module to add. One of: `guardrails`, `caching`, `reranking`, `enrichment`, `observability`, `hybrid-retrieval`. |
+
+## Options
+
+This command takes no options.
+
+## Examples
+
+### Add semantic caching
+
+```bash
+rag-forge add caching
+```
+
+### Add input/output guardrails
+
+```bash
+rag-forge add guardrails
+```
+
+### Add cross-encoder reranking
+
+```bash
+rag-forge add reranking
+```
+
+## Related commands
+
+- [`rag-forge init`](/cli/init) — scaffold the project first
+- [`rag-forge index`](/cli/index-command) — ingest documents into the vector store

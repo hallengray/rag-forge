@@ -1,0 +1,40 @@
+---
+title: rag-forge cache
+---
+
+# rag-forge cache
+
+> Semantic cache management
+
+## Synopsis
+
+```bash
+rag-forge cache <subcommand>
+```
+
+## Description
+
+`cache` provides visibility into the semantic query cache. The semantic cache intercepts incoming queries and returns stored answers for semantically similar previous questions, avoiding redundant LLM and embedding calls and directly reducing the costs reported by `rag-forge cost`.
+
+## Subcommands
+
+### cache stats
+
+Print hit/miss statistics for the semantic cache.
+
+```bash
+rag-forge cache stats
+```
+
+The output shows the hit rate as a percentage, the raw hit and miss counts, the total number of queries recorded, and the cache backend in use. No options are available — the command reads configuration from the project's `rag-forge.config.ts`.
+
+#### Example
+
+```bash
+rag-forge cache stats
+```
+
+## Related commands
+
+- [`rag-forge query`](/cli/query) — run a query (cache hits are recorded here)
+- [`rag-forge cost`](/cli/cost) — estimate pipeline costs (cache hits reduce LLM spend)

@@ -1,0 +1,75 @@
+---
+title: rag-forge guardrails
+---
+
+# rag-forge guardrails
+
+> Security testing and PII scanning
+
+## Synopsis
+
+```bash
+rag-forge guardrails <subcommand> [options]
+```
+
+## Description
+
+`guardrails` provides two security-focused checks: adversarial prompt testing (does your pipeline block prompt-injection and jailbreak attempts?) and PII scanning (does your vector store contain personally identifiable information that should not be there?).
+
+Both subcommands delegate to the Python `rag_forge_core.cli` module and produce structured output showing which categories of attack succeeded or failed, or which types of PII were found and in how many chunks.
+
+## Subcommands
+
+### guardrails test
+
+Run an adversarial prompt test suite against your pipeline's security guards. The built-in corpus covers common attack categories (prompt injection, jailbreaks, data extraction attempts, and others). You can supply a custom corpus to extend or replace the built-in set.
+
+```bash
+rag-forge guardrails test [options]
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--corpus <file>` | — | Path to a custom adversarial corpus JSON file; if omitted the built-in corpus is used |
+
+#### Examples
+
+```bash
+# Run the built-in adversarial suite
+rag-forge guardrails test
+
+# Run with a custom attack corpus
+rag-forge guardrails test --corpus ./security/custom-corpus.json
+```
+
+---
+
+### guardrails scan-pii
+
+Scan a named vector store collection for PII leakage. The scanner checks each stored chunk for common PII patterns (names, email addresses, phone numbers, credit card numbers, and others) and reports the count and type of any findings.
+
+```bash
+rag-forge guardrails scan-pii [options]
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-c, --collection <name>` | `rag-forge` | Name of the vector store collection to scan |
+
+#### Examples
+
+```bash
+# Scan the default collection
+rag-forge guardrails scan-pii
+
+# Scan a named collection
+rag-forge guardrails scan-pii --collection my-project
+```
+
+## Related commands
+
+- [`rag-forge query`](/cli/query) — run a query through the pipeline

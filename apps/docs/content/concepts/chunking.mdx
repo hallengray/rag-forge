@@ -1,0 +1,38 @@
+---
+title: Chunking
+---
+
+# Chunking
+
+> Chunking is the process of splitting source documents into smaller pieces before embedding and storing them. The chunks you create at ingestion time determine the maximum granularity of information your retrieval system can return — if a fact spans two chunks, your retriever may not surface it cleanly. Getting chunking right is often the single highest-leverage improvement you can make to a RAG pipeline.
+
+## Why this matters
+
+An LLM can only see what the retriever returns. If your chunks are too large, the retrieved context is diluted with irrelevant material, which drives up hallucination rates and decreases faithfulness scores. If chunks are too small, a single retrieved chunk may lack enough context for the LLM to form a coherent answer, and important cross-sentence reasoning gets lost.
+
+There is no universally correct chunk size. The right strategy depends on your content type: dense technical prose behaves differently from a wiki structured with Markdown headers, which behaves differently from a code base, which behaves differently from a customer support transcript. RAG-Forge ships five distinct chunking strategies so you can match the strategy to your content without writing custom parsing logic.
+
+The `rag-forge chunk` command lets you preview chunking output before ingesting any data, so you can compare strategies and tune parameters without committing to an index.
+
+## How RAG-Forge implements it
+
+All chunking strategies live in `packages/core/src/rag_forge_core/chunking/` and share the `ChunkStrategy` base class from `base.py`. Configuration is validated at initialization time through the `ChunkConfig` Pydantic model in `config.py`, which means invalid parameters fail loudly before any data is processed.
+
+**Fixed** (`fixed.py`, class `FixedSizeChunker`). Splits text into token windows of exactly `chunk_size` tokens (default 512) with `overlap_tokens` shared between adjacent windows. Uses tiktoken's `cl100k_base` encoding for accurate token counting. This is the fastest and most predictable strategy. Use it for structured data, baseline comparisons, or when you need a strict token budget per chunk.
+
+**Recursive** (`recursive.py`, class `RecursiveChunker`). The default strategy. Splits by a separator hierarchy — paragraphs, then lines, then sentences, then words — accumulating parts until the token budget is reached. Any part that still exceeds the budget is recursed into with the next separator level. The docstring records a Feb 2026 internal benchmark: 69% retrieval accuracy versus 54% for semantic chunking on the same corpus, which is why it is the default.
+
+**Semantic** (`semantic.py`, class `SemanticChunker`). Embeds each sentence and splits at boundaries where cosine similarity between adjacent sentences drops below a configured threshold. Prioritizes topic coherence over strict size limits — a merged group can exceed `chunk_size` by design. Requires an `EmbeddingProvider`. Recommended only for long-form prose where topic shifts are gradual. The same Feb 2026 benchmark shows 54% accuracy, so use it selectively.
+
+**Structural** (`structural.py`, class `StructuralChunker`). Splits at Markdown H1-H6 header boundaries. Each header starts a new chunk. Sections that exceed `chunk_size` are sub-split by delegating to `RecursiveChunker`. Preserves the `parent_section` field on each chunk for downstream filtering. Best for technical documentation, wikis, or any content where headers encode genuine topic structure.
+
+**LLM-driven** (`llm_driven.py`, class `LLMDrivenChunker`). Sends numbered sentences to an LLM (the code recommends Claude Haiku or GPT-4o-mini for cost) and asks it to return boundary indices as JSON. Falls back to size-based splitting when the LLM response is unparseable. Most accurate for complex prose with subtle topic shifts, but adds latency and cost to ingestion. Requires a `GenerationProvider`.
+
+## Trade-offs
+
+Fixed chunking is cheap and predictable but ignores semantic structure entirely — a paragraph split mid-thought will be split mid-thought. Recursive chunking is a strong general default. Semantic chunking requires embedding every sentence at ingestion time, which is slow and expensive for large corpora, and the benchmark shows it underperforms recursive on the tested workloads. Structural chunking degrades gracefully when headers are absent (it falls back to returning the whole document as one chunk). LLM-driven chunking is the highest-fidelity option but the most expensive; it is rarely worth the cost at ingestion time unless your corpus is small and retrieval quality is critical.
+
+## Further reading
+
+- [rag-forge chunk](/cli/chunk) — preview chunk output before ingesting
+- [Retrieval concepts](/concepts/retrieval) — how chunks become search results

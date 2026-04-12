@@ -1,0 +1,54 @@
+---
+title: rag-forge chunk
+---
+
+# rag-forge chunk
+
+> Preview chunking without indexing.
+
+## Synopsis
+
+```bash
+rag-forge chunk [options]
+```
+
+## Description
+
+`chunk` runs the parse and chunking stages and prints statistics — total chunk count, average/min/max token sizes, total token count, and a sample of chunk previews — without writing anything to the vector store. Like `parse`, it is a dry-run diagnostic tool.
+
+Use `chunk` to tune your chunking strategy and chunk size before committing to a full `index` run. Different strategies suit different content types: `fixed` is predictable, `recursive` handles most prose well and is the default, `semantic` groups semantically related sentences, `structural` respects document structure (headings, code fences), and `llm-driven` uses a language model to decide split points.
+
+The command delegates to the Python `rag_forge_core.cli` module.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-s, --source <directory>` | `./docs` | Source directory to chunk |
+| `--strategy <type>` | `recursive` | Chunking strategy: `fixed` \| `recursive` \| `semantic` \| `structural` \| `llm-driven` |
+| `--chunk-size <tokens>` | — | Target chunk size in tokens |
+
+## Examples
+
+### Preview with default settings
+
+```bash
+rag-forge chunk
+```
+
+### Try semantic chunking on a custom source
+
+```bash
+rag-forge chunk --source ./data --strategy semantic
+```
+
+### Tune chunk size
+
+```bash
+rag-forge chunk --strategy fixed --chunk-size 256
+```
+
+## Related commands
+
+- [`rag-forge parse`](/cli/parse) — run just the extraction stage
+- [`rag-forge index`](/cli/index-command) — run the full pipeline after you are happy with chunk output

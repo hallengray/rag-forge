@@ -1,0 +1,45 @@
+---
+title: Installation
+---
+
+# Installation
+
+> Get the `rag-forge` CLI running on your machine.
+
+## Prerequisites
+
+- **Node.js 20+** — for the CLI and MCP server
+- **Python 3.11+** with [uv](https://github.com/astral-sh/uv) — for the RAG pipeline and evaluator
+- A vector store (Qdrant recommended for local dev)
+- An LLM provider API key (OpenAI, Anthropic, or a local model via Ollama)
+
+## Install the CLI
+
+```bash
+npm install -g rag-forge
+# or
+pnpm add -g rag-forge
+```
+
+Verify:
+
+```bash
+rag-forge --version
+```
+
+## Install the Python runtime
+
+The CLI delegates all pipeline and evaluation work to Python packages. Install them with `uv`:
+
+```bash
+uv tool install rag-forge-core
+uv tool install rag-forge-evaluator
+```
+
+`rag-forge-core` handles chunking, embedding, retrieval, and generation.
+`rag-forge-evaluator` handles RAGAS/DeepEval scoring and the RAG Maturity Model audit.
+
+## Next steps
+
+- [Quick Start](/getting-started/quick-start) — index your first corpus and run a query
+- [Core Concepts](/getting-started/concepts) — what RAG-Forge does and doesn't do

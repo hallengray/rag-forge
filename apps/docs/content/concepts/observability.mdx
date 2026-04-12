@@ -1,0 +1,38 @@
+---
+title: Observability
+---
+
+# Observability
+
+> Observability is what lets you see inside a running RAG pipeline — which stage is slow, how much each query costs, whether your model inputs have changed character since you last evaluated the system. RAG-Forge implements observability through two mechanisms: OpenTelemetry spans emitted at every pipeline stage, and a drift detector that alerts you when your live query distribution diverges from the baseline you evaluated against.
+
+## Why this matters
+
+A RAG pipeline is a multi-step system. A slow response could be caused by embedding latency, vector search, reranking, or LLM generation. A drop in answer quality could be caused by a change in the documents you indexed, a shift in the types of questions your users are asking, or a model update. Without instrumentation, you cannot distinguish between these causes. Observability gives you the data to debug degradations precisely rather than guessing.
+
+Drift detection solves a subtler problem. Your golden set was assembled from a sample of real queries. If the distribution of real queries shifts — users start asking about a new product feature, a new regulation creates new terminology, seasonal patterns change what people care about — your evaluation numbers may stay green while real-world quality degrades, because the evaluation suite no longer represents what users are actually asking.
+
+## How RAG-Forge implements it
+
+The observability package lives at `packages/observability/src/rag_forge_observability/`. The public API exports two classes: `TracingManager` and `SpanAttributes` (from `tracing.py`).
+
+**OpenTelemetry tracing** (`tracing.py`). `TracingManager` initializes OpenTelemetry tracing on demand. Tracing activates only when the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable is set; when the variable is absent, `get_tracer()` returns the OTEL no-op tracer, which has zero runtime overhead. The `enable()` method creates a `TracerProvider` with a `BatchSpanProcessor` and registers it globally, so all pipeline stages that call `trace.get_tracer()` automatically export to the configured OTLP endpoint.
+
+`SpanAttributes` is a dataclass that standardizes what each span carries: `stage` (the pipeline stage name), `duration_ms`, `token_count`, `chunk_count`, `model_used`, and `cost_usd`. Every pipeline stage that emits a span should populate the relevant subset of these fields so that downstream tooling can aggregate them uniformly.
+
+**Langfuse integration.** The `TracingManager` docstring documents the integration pattern explicitly: set `OTEL_EXPORTER_OTLP_ENDPOINT` to `https://cloud.langfuse.com/api/public/otel` and provide `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`. Because RAG-Forge uses standard OTLP export, any OTLP-compatible backend (Langfuse, Jaeger, Honeycomb, Grafana Tempo) works with the same environment variable.
+
+The audit orchestrator in `packages/evaluator/src/rag_forge_evaluator/audit.py` demonstrates the span-per-stage model in practice: it wraps `load_input`, `evaluate`, `score_rmm`, and `generate_report` in separate named spans, setting attributes like `sample_count`, `engine`, and `rmm_level` on each. A typical audit trace has five spans nested under a root `rag-forge.audit` span.
+
+**Drift detection** (`drift.py`). `DriftDetector` compares the centroid of a set of current query embeddings against a saved baseline centroid using cosine distance. When the distance exceeds the configured threshold (default `0.15`), it returns a `DriftReport` with `is_drifting: True`. The `DriftBaseline` class handles serializing and loading baseline embeddings from JSON files. The threshold of `0.15` is specified in the module as the value that triggers a drift alert.
+
+To use drift detection in practice: after running a successful evaluation, save your query embeddings as a baseline using `DriftDetector.save_baseline()`. In production, periodically compute embeddings of recent user queries and call `DriftDetector.analyze()` to check whether the distribution has shifted. If drift is detected, it is a signal to refresh your golden set and re-evaluate.
+
+## Trade-offs
+
+OpenTelemetry adds a dependency and requires an OTLP endpoint to be useful. When no endpoint is configured the overhead is zero, but you also get no data. The drift detector requires you to compute and store query embeddings in production, which adds a small cost per query. The cosine distance threshold of 0.15 is a reasonable default but may need tuning for your specific embedding model and query distribution — a tighter threshold produces more alerts, a looser one may miss real shifts.
+
+## Further reading
+
+- [rag-forge report](/cli/report) — generate HTML and JSON reports from audit history
+- [RAG Maturity Model — RMM-5 Enterprise level](/concepts/rmm) — drift detection is a requirement for the highest maturity level

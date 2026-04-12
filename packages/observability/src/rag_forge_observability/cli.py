@@ -43,7 +43,7 @@ def cmd_drift_report(
     """Generate a drift report comparing current embeddings to baseline."""
     try:
         baseline = DriftBaseline.load(baseline_path)
-    except FileNotFoundError as e:
+    except Exception as e:
         return {"success": False, "error": str(e)}
 
     try:

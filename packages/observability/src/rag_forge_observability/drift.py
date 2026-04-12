@@ -28,6 +28,13 @@ class DriftBaseline:
         if not embeddings:
             msg = "Baseline requires at least one embedding vector."
             raise ValueError(msg)
+        dim = len(embeddings[0])
+        if dim == 0:
+            msg = "Embedding vectors must not be empty."
+            raise ValueError(msg)
+        if any(len(emb) != dim for emb in embeddings):
+            msg = f"All embeddings must have the same dimension ({dim})."
+            raise ValueError(msg)
         self.embeddings = embeddings
         self._centroid: list[float] | None = None
 

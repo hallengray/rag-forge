@@ -73,6 +73,9 @@ class CostEstimator:
             telemetry: List of dicts with keys: model, input_tokens, output_tokens, calls.
             queries_per_day: Projected daily query volume.
         """
+        if queries_per_day < 0:
+            msg = "queries_per_day must be >= 0"
+            raise ValueError(msg)
         if queries_per_day == 0 or not telemetry:
             return CostReport(
                 daily_cost=0.0,
@@ -80,10 +83,6 @@ class CostEstimator:
                 breakdown=[],
                 queries_per_day=queries_per_day,
             )
-
-        total_sample_calls = sum(entry.get("calls", 1) for entry in telemetry)
-        if total_sample_calls == 0:
-            total_sample_calls = 1
 
         breakdown: list[dict[str, Any]] = []
         total_cost_per_query = 0.0
@@ -93,18 +92,23 @@ class CostEstimator:
             input_tokens = entry.get("input_tokens", 0)
             output_tokens = entry.get("output_tokens", 0)
             calls = entry.get("calls", 1)
+            if calls <= 0:
+                calls = 1
 
+            # Per-call cost for this model
             input_cost = (input_tokens / 1000) * self.pricing.cost_per_1k_input(model)
             output_cost = (output_tokens / 1000) * self.pricing.cost_per_1k_output(model)
             sample_cost = input_cost + output_cost
-            per_query = sample_cost / total_sample_calls if total_sample_calls > 0 else 0.0
+
+            # Normalize to per-query: each model's total sample cost / its own call count
+            per_query = sample_cost / calls
             total_cost_per_query += per_query
 
             breakdown.append(
                 {
                     "model": model,
-                    "input_tokens_per_query": input_tokens / calls if calls > 0 else 0,
-                    "output_tokens_per_query": output_tokens / calls if calls > 0 else 0,
+                    "input_tokens_per_query": input_tokens / calls,
+                    "output_tokens_per_query": output_tokens / calls,
                     "cost_per_query": per_query,
                 }
             )

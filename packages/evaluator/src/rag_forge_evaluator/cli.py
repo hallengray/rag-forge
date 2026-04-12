@@ -66,7 +66,11 @@ def cmd_cost(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     usage = data.get("usage", [])
-    queries_per_day = int(args.queries_per_day or data.get("queries_per_day", 100))
+    raw_qpd = args.queries_per_day if args.queries_per_day is not None else data.get("queries_per_day", 100)
+    queries_per_day = int(raw_qpd)
+    if queries_per_day < 0:
+        json.dump({"success": False, "error": "queries_per_day must be >= 0"}, sys.stdout)
+        sys.exit(1)
 
     estimator = CostEstimator()
     report = estimator.estimate(usage, queries_per_day)

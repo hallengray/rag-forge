@@ -1,0 +1,45 @@
+---
+title: rag-forge inspect
+---
+
+# rag-forge inspect
+
+> Inspect a specific chunk by ID.
+
+## Synopsis
+
+```bash
+rag-forge inspect --chunk-id <id> [options]
+```
+
+## Description
+
+`inspect` fetches a single indexed chunk by its ID and prints its full text and metadata. It is a debugging tool for understanding exactly what the pipeline stored: the raw chunk text, its embedding-ready form, and any metadata fields (source document, position, enrichment summaries, and so on).
+
+`--chunk-id` is required. Chunk IDs appear in the source listings printed by `rag-forge query` or can be retrieved via the Python core API. If the chunk is not found in the specified collection the command exits with a warning rather than a hard error.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--chunk-id <id>` | **required** | The chunk ID to inspect |
+| `--collection <name>` | `rag-forge` | Collection name to look up the chunk in |
+
+## Examples
+
+### Inspect a chunk by ID
+
+```bash
+rag-forge inspect --chunk-id abc123
+```
+
+### Inspect a chunk in a non-default collection
+
+```bash
+rag-forge inspect --chunk-id abc123 --collection my-project
+```
+
+## Related commands
+
+- [`rag-forge query`](/cli/query) — queries return chunk IDs in the sources list
+- [`rag-forge index`](/cli/index-command) — index is the command that creates the chunks

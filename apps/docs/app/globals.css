@@ -1,0 +1,9 @@
+@import "nextra-theme-docs/style.css";
+
+html.dark {
+  --nextra-bg: #0a0a0a;
+}
+
+html.light {
+  --nextra-bg: #fafafa;
+}

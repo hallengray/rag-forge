@@ -1,0 +1,51 @@
+---
+title: n8n template
+---
+
+# n8n template
+
+> Pre-built n8n workflow that connects an AI Agent node to RAG-Forge via MCP — for AI automation agency deployments.
+
+## What you get
+
+```
+project/
+├── workflow.json    # Import this directly into n8n
+└── README.md        # Setup instructions for n8n + MCP connection
+```
+
+Note: unlike the other templates, the n8n template does not scaffold a Python project. It provides a workflow definition that drives an existing RAG-Forge installation through the MCP server.
+
+## Default configuration
+
+There is no `rag-forge.config.ts` or `pyproject.toml` in this template. Configuration lives in n8n itself and in the MCP server you point it at.
+
+The workflow exposes five MCP tools to the n8n AI Agent node:
+
+| Tool | What it does |
+|---|---|
+| `rag_query` | Execute a RAG query and return an answer |
+| `rag_audit` | Run the evaluation suite against the golden set |
+| `rag_ingest` | Index a directory of documents |
+| `rag_inspect` | Look up a specific chunk by ID |
+| `rag_status` | Check pipeline health |
+
+To start the MCP server that the workflow connects to:
+
+```bash
+rag-forge serve --mcp --transport http --port 3100
+```
+
+The workflow expects the server at `http://localhost:3100/sse` by default. Set the `RAG_FORGE_MCP_URL` credential in n8n to override this.
+
+See the [`rag-forge serve`](/cli/serve) and [`rag-forge n8n`](/cli/n8n) reference pages for full server options.
+
+## Recommended next steps
+
+1. Start your MCP server with `rag-forge serve --mcp --transport http --port 3100`, then import `workflow.json` into n8n via **Workflows → Import from File**.
+2. Set the `RAG_FORGE_MCP_URL` credential in n8n and configure your LLM provider in the AI Agent node.
+3. Trigger the workflow with a test question to verify the MCP connection, then customise the agent's system prompt for your use case.
+
+## When to upgrade
+
+The n8n template is a parallel track to the Python-based templates (basic → hybrid → agentic → enterprise). It is not an upgrade path — it is an integration layer. For stronger retrieval or security guards, run the n8n workflow against an enterprise-template pipeline rather than switching away from this template.

@@ -1,0 +1,85 @@
+---
+title: rag-forge golden
+---
+
+# rag-forge golden
+
+> Golden set management for evaluation
+
+## Synopsis
+
+```bash
+rag-forge golden <subcommand> [options]
+```
+
+## Description
+
+`golden` manages the ground-truth question/answer set that powers `rag-forge audit`. A golden set is a JSON file containing curated evaluation examples — each with a question, expected keywords, a difficulty level, and a topic category.
+
+Maintaining a high-quality, representative golden set is one of the most reliable ways to track pipeline quality over time. The default golden set path for a scaffolded project is `eval/golden_set.json`.
+
+## Subcommands
+
+### golden add
+
+Add entries to the golden set, either manually (one question at a time) or by sampling from a telemetry JSONL file.
+
+```bash
+rag-forge golden add [options]
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-g, --golden-set <file>` | `eval/golden_set.json` | Path to the golden set JSON file (required) |
+| `--from-traffic <file>` | — | Sample entries from a telemetry JSONL file |
+| `--sample-size <number>` | `10` | Number of entries to sample from traffic |
+| `--query <question>` | — | Question text to add manually |
+| `--keywords <list>` | — | Comma-separated expected keywords for the manual entry |
+| `--difficulty <level>` | `medium` | Difficulty: `easy` \| `medium` \| `hard` |
+| `--topic <name>` | `general` | Topic category for the manual entry |
+
+Either `--from-traffic` or `--query` + `--keywords` must be provided.
+
+#### Examples
+
+```bash
+# Sample 20 entries from captured production traffic
+rag-forge golden add --from-traffic ./telemetry/pipeline.jsonl --sample-size 20
+
+# Add a single manual entry
+rag-forge golden add \
+  --query "What is RAG?" \
+  --keywords "retrieval,augmented,generation" \
+  --difficulty easy \
+  --topic fundamentals
+```
+
+---
+
+### golden validate
+
+Validate the golden set for schema correctness, topic coverage balance, and completeness.
+
+```bash
+rag-forge golden validate [options]
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-g, --golden-set <file>` | `eval/golden_set.json` | Path to the golden set JSON file (required) |
+
+#### Examples
+
+```bash
+rag-forge golden validate
+
+rag-forge golden validate --golden-set eval/custom_golden.json
+```
+
+## Related commands
+
+- [`rag-forge audit`](/cli/audit) — run evaluation using the golden set

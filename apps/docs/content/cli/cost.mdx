@@ -1,0 +1,47 @@
+---
+title: rag-forge cost
+---
+
+# rag-forge cost
+
+> Estimate monthly pipeline costs from telemetry
+
+## Synopsis
+
+```bash
+rag-forge cost --telemetry <file> [options]
+```
+
+## Description
+
+`cost` reads a telemetry JSON file produced by your pipeline and calculates estimated daily and monthly LLM and embedding costs. It breaks costs down by model so you can see exactly which component is most expensive.
+
+The calculation is based on token counts recorded during real pipeline runs. If you want to project costs at a volume different from what the telemetry file captured, pass `--queries-per-day` to override the inferred volume.
+
+The command delegates to the Python `rag_forge_evaluator.cli` module and makes no LLM calls — it is purely arithmetic over recorded token usage.
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--telemetry <file>` | — | Path to telemetry JSON file (required) |
+| `--queries-per-day <number>` | — | Projected daily query volume; overrides the volume inferred from the telemetry file |
+
+## Examples
+
+### Basic usage
+
+```bash
+rag-forge cost --telemetry ./telemetry/pipeline.json
+```
+
+### Project costs at a specific query volume
+
+```bash
+rag-forge cost --telemetry ./telemetry/pipeline.json --queries-per-day 5000
+```
+
+## Related commands
+
+- [`rag-forge query`](/cli/query) — run a query through the pipeline (generates telemetry)
+- [`rag-forge cache`](/cli/cache) — view semantic cache hit rate (cache hits reduce cost)

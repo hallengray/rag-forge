@@ -1,0 +1,79 @@
+---
+title: rag-forge drift
+---
+
+# rag-forge drift
+
+> Query drift detection and baseline management
+
+## Synopsis
+
+```bash
+rag-forge drift <subcommand> [options]
+```
+
+## Description
+
+`drift` detects when the distribution of incoming queries has shifted significantly from a known-good baseline. This matters because a retrieval pipeline tuned for one query distribution may silently degrade when the actual questions users ask change over time.
+
+Drift is measured as the cosine distance between the centroid of current query embeddings and the centroid of the baseline embeddings. If the distance exceeds the configured threshold, drift is flagged. The command delegates to the Python `rag_forge_observability.cli` module.
+
+## Subcommands
+
+### drift report
+
+Analyze the current query embedding distribution against a saved baseline and report whether drift has occurred.
+
+```bash
+rag-forge drift report --current <file> --baseline <file> [options]
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--current <file>` | — | Path to current embeddings JSON (required) |
+| `--baseline <file>` | — | Path to baseline embeddings JSON (required) |
+| `--threshold <number>` | `0.15` | Cosine distance threshold above which drift is flagged |
+
+#### Examples
+
+```bash
+rag-forge drift report \
+  --current ./embeddings/current.json \
+  --baseline ./embeddings/baseline.json
+
+rag-forge drift report \
+  --current ./embeddings/current.json \
+  --baseline ./embeddings/baseline.json \
+  --threshold 0.10
+```
+
+---
+
+### drift save-baseline
+
+Snapshot the current query embeddings as the new baseline for future drift comparisons. Run this after a deliberate query distribution change (e.g., after deploying a new product feature) to reset the reference point.
+
+```bash
+rag-forge drift save-baseline --embeddings <file> --output <file>
+```
+
+#### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--embeddings <file>` | — | Path to the embeddings JSON to use as baseline (required) |
+| `--output <file>` | — | Path to write the saved baseline (required) |
+
+#### Examples
+
+```bash
+rag-forge drift save-baseline \
+  --embeddings ./embeddings/current.json \
+  --output ./embeddings/baseline.json
+```
+
+## Related commands
+
+- [`rag-forge audit`](/cli/audit) — full quality evaluation run

@@ -1,0 +1,53 @@
+---
+title: Quick Start
+---
+
+# Quick Start
+
+> Index a corpus and run your first query in under five minutes.
+
+## 1. Create a project
+
+The `init` command scaffolds a new RAG project from a template. Pass the template name as a positional argument (defaults to `basic` if omitted):
+
+```bash
+rag-forge init my-rag-app
+cd my-rag-app
+```
+
+Available templates: `basic`, `hybrid`, `agentic`, `enterprise`, `n8n`. To scaffold a different one:
+
+```bash
+rag-forge init my-rag-app hybrid
+```
+
+## 2. Build the index
+
+Point `index` at your source documents. The `--source` flag is required:
+
+```bash
+rag-forge index --source ./docs
+```
+
+This parses, chunks, embeds, and writes your documents to the configured vector store.
+By default it uses the `mock` embedding provider — set `--embedding openai` (or `local`) for real embeddings.
+
+## 3. Query
+
+```bash
+rag-forge query "What does RAG-Forge do?"
+```
+
+## 4. Audit retrieval quality
+
+```bash
+rag-forge audit --golden-set eval/golden_set.json
+```
+
+This runs a baseline evaluation against the golden set in `eval/golden_set.json` and prints an RMM score (0–5).
+
+## What's next
+
+- [Templates](/templates/basic) — start from a scaffold that matches your use case
+- [CLI Reference](/cli/overview) — every command and flag
+- [RAG Maturity Model](/concepts/rmm) — how RAG-Forge scores your pipeline

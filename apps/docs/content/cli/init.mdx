@@ -1,0 +1,61 @@
+---
+title: rag-forge init
+---
+
+# rag-forge init
+
+> Scaffold a new RAG project from a template.
+
+## Synopsis
+
+```bash
+rag-forge init [template] [options]
+```
+
+## Description
+
+`init` copies a project template into a target directory and prepares it for immediate use. It is the first command you run when starting a new RAG-Forge project.
+
+The `[template]` argument is positional and optional — it defaults to `basic`. The target directory defaults to the template name unless you override it with `--directory`. If the target directory already exists and is not empty, the command exits with an error rather than overwriting existing work.
+
+After copying, `init` rewrites the `pyproject.toml` inside the scaffolded project to use the target directory name as the project name. It then prints every file it created and shows you the next steps to run.
+
+## Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `template` | No | Template name to scaffold. One of: `basic`, `hybrid`, `agentic`, `enterprise`, `n8n`. Defaults to `basic`. |
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-d, --directory <dir>` | template name | Target directory to scaffold into |
+| `--no-install` | — | Skip dependency installation |
+
+## Examples
+
+### Scaffold a basic project
+
+```bash
+rag-forge init
+```
+
+Creates a `basic/` directory using the default `basic` template.
+
+### Scaffold a hybrid project into a named directory
+
+```bash
+rag-forge init hybrid --directory my-search-app
+```
+
+### Scaffold an enterprise project in the current directory
+
+```bash
+rag-forge init enterprise --directory .
+```
+
+## Related commands
+
+- [`rag-forge index`](/cli/index-command) — index documents after scaffolding
+- [`rag-forge add`](/cli/add) — add optional feature modules to the project

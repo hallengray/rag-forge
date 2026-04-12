@@ -1,0 +1,60 @@
+---
+title: enterprise template
+---
+
+# enterprise template
+
+> Hybrid retrieval with input/output security guards and CI/CD quality gates — for regulated environments and multi-tenant deployments.
+
+## What you get
+
+```
+project/
+├── src/
+│   ├── pipeline.py       # Hybrid pipeline with --input-guard and --output-guard flags
+│   └── config.py         # Pipeline configuration
+├── eval/
+│   ├── golden_set.json   # Evaluation dataset
+│   └── config.yaml       # Evaluation thresholds and CI gate settings
+├── pyproject.toml        # Python dependencies including rag-forge-core[cohere]
+└── README.md
+```
+
+## Default configuration
+
+The enterprise template extends the hybrid configuration with `input_guard` and `output_guard` enabled. Input guards screen queries for PII and prompt-injection attempts before they reach the retriever. Output guards validate generated answers against the retrieved context before they are returned to the caller.
+
+```toml
+# pyproject.toml [tool.rag-forge] section
+[tool.rag-forge]
+template = "enterprise"
+chunk_strategy = "recursive"
+chunk_size = 512
+overlap_ratio = 0.1
+vector_db = "qdrant"
+embedding_model = "BAAI/bge-m3"
+retrieval_strategy = "hybrid"
+retrieval_alpha = 0.6
+reranker = "none"
+enrich = true
+input_guard = true
+output_guard = true
+```
+
+To invoke with guards active at query time:
+
+```bash
+rag-forge query "your question" --strategy hybrid --input-guard --output-guard
+```
+
+The CI gate in `eval/config.yaml` blocks deployments when `faithfulness` drops below `0.85`, giving you a hard quality threshold before any model or data change reaches production.
+
+## Recommended next steps
+
+1. Index documents with enrichment: `rag-forge index --source ./docs --enrich --sparse-index-path .rag-forge/sparse`.
+2. Wire the CI gate into your pipeline (GitHub Actions, GitLab CI, etc.) by running `rag-forge audit --golden-set eval/golden_set.json` as a required check.
+3. Review what the input guard flags on your real query traffic and tune its sensitivity — overly aggressive filtering will degrade user experience.
+
+## When to upgrade
+
+The enterprise template is the highest tier in the RAG-Forge stack. There is no template above it. For workflow orchestration needs, the `n8n` template is a parallel track that can be combined with enterprise-grade pipelines.

@@ -1,0 +1,49 @@
+---
+title: Evaluation
+---
+
+# Evaluation
+
+> Evaluation is the discipline of measuring how well your RAG pipeline is actually performing — not just whether it returns an answer, but whether that answer is faithful to the retrieved context, relevant to the question asked, and free of hallucinated claims. RAG-Forge treats evaluation as a first-class part of the pipeline, not an afterthought, by providing a built-in metric stack, a golden set format, and two distinct evaluation workflows.
+
+## Why this matters
+
+Without evaluation, you are flying blind. A pipeline can look good in manual spot-checking and fail badly on edge cases that only appear at scale. Worse, pipeline changes that improve one metric often degrade another — better retrieval recall can increase context noise, which can hurt faithfulness. The only way to detect these regressions is to run the same evaluation suite before and after every change.
+
+RAG-Forge supports two evaluation modes because the use cases are different. `rag-forge audit` is designed for iterative development: you run it repeatedly, it records results in an audit history file, and it shows metric trends over time so you can see whether a change helped or hurt. `rag-forge assess` is designed for a quick snapshot: it reads your configuration and an optional prior audit report to tell you your current RMM level without re-running full evaluation.
+
+## How RAG-Forge implements it
+
+The evaluator package lives at `packages/evaluator/src/rag_forge_evaluator/`.
+
+**Metric stack.** The default engine is the LLM-as-judge evaluator in `metrics/llm_judge.py`, class `LLMJudgeEvaluator`. It runs four metrics per sample:
+
+- `faithfulness` (`metrics/faithfulness.py`) — does the answer contain only claims that are supported by the retrieved context?
+- `context_relevance` (`metrics/context_relevance.py`) — is the retrieved context actually relevant to the question?
+- `answer_relevance` (`metrics/answer_relevance.py`) — does the answer directly address the question?
+- `hallucination` (`metrics/hallucination.py`) — does the answer contain claims that contradict the retrieved context?
+
+Each metric delegates to a `JudgeProvider` defined by the `judge/base.py` protocol. Three judge implementations ship: `ClaudeJudge` (Anthropic API), `OpenAIJudge` (OpenAI API), and `MockJudge` (deterministic scores for testing). The judge receives a structured prompt and returns a score that the metric class parses and normalizes to a 0–1 float.
+
+The `LLMJudgeEvaluator` also computes a `root_cause` per sample (`"retrieval"`, `"generation"`, `"both"`, or `"none"`) by comparing context relevance against faithfulness and answer relevance, so you know whether a failing sample points to a retrieval problem or a generation problem.
+
+**RAGAS engine.** An alternative evaluator, `engines/ragas_evaluator.py` (`RagasEvaluator`), wraps the RAGAS framework and runs its `faithfulness`, `answer_relevancy`, `context_precision`, and `context_recall` metrics. It is opt-in via `--evaluator ragas` in the `audit` command, and requires the `rag-forge-evaluator[ragas]` extra.
+
+**DeepEval engine.** `engines/deepeval_evaluator.py` wraps DeepEval and is similarly opt-in via `--evaluator deepeval`.
+
+**Golden sets.** The `golden_set.py` module defines the format for golden evaluation sets — JSON files where each entry contains a query, a list of retrieved contexts, a generated response, and optionally an expected answer. The `audit` command accepts a golden set via `--golden-set` as an alternative to a live telemetry JSONL file.
+
+**Audit orchestration.** `audit.py` (`AuditOrchestrator`) coordinates the full pipeline: load input, create the judge and evaluator, run evaluation, score against the RMM using `RMMScorer`, compute metric trends against the previous run in the audit history, and generate HTML and JSON reports. Every stage emits an OpenTelemetry span via the configured tracer.
+
+Default metric thresholds in the RAGAS evaluator: faithfulness 0.85, answer relevancy 0.80, context precision 0.80, context recall 0.70. These match the RMM-3 trust criteria.
+
+## Trade-offs
+
+LLM-as-judge evaluation is not free. Every sample requires one or more LLM calls per metric, so a golden set of 100 samples with four metrics can mean 400 API calls. The `MockJudge` eliminates this cost during development, but its scores are deterministic and meaningless for real quality measurement. RAGAS metrics require `ground_truth` (expected answers) for context precision and recall, which means you need a labelled golden set — not all teams have one. DeepEval has similar requirements and cost characteristics to RAGAS.
+
+## Further reading
+
+- [rag-forge audit](/cli/audit) — run iterative evaluation with trend tracking
+- [rag-forge assess](/cli/assess) — snapshot your current RMM level
+- [rag-forge golden](/cli/golden) — build and manage golden evaluation sets
+- [RAG Maturity Model](/concepts/rmm) — how evaluation scores map to maturity levels

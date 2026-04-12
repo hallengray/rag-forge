@@ -4,6 +4,8 @@ import { registerIndexCommand } from "./commands/index.js";
 import { registerAuditCommand } from "./commands/audit.js";
 import { registerQueryCommand } from "./commands/query.js";
 import { registerServeCommand } from "./commands/serve.js";
+import { registerDriftCommand } from "./commands/drift.js";
+import { registerCostCommand } from "./commands/cost.js";
 
 const program = new Command();
 
@@ -19,5 +21,7 @@ registerIndexCommand(program);
 registerAuditCommand(program);
 registerQueryCommand(program);
 registerServeCommand(program);
+registerDriftCommand(program);
+registerCostCommand(program);
 
 program.parse();

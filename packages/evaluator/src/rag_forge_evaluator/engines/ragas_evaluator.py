@@ -1,11 +1,16 @@
 """RAGAS framework evaluator wrapper. Requires: pip install rag-forge-evaluator[ragas]"""
 
+from rag_forge_evaluator.engine import (
+    EvaluationResult,
+    EvaluationSample,
+    EvaluatorInterface,
+    MetricResult,
+)
+
 try:
     import ragas  # noqa: F401
-except ImportError:
-    raise ImportError("RAGAS is not installed. Install with: pip install rag-forge-evaluator[ragas]")
-
-from rag_forge_evaluator.engine import EvaluationResult, EvaluationSample, EvaluatorInterface, MetricResult
+except ImportError as e:
+    raise ImportError("RAGAS is not installed. Install with: pip install rag-forge-evaluator[ragas]") from e
 
 
 class RagasEvaluator(EvaluatorInterface):
@@ -13,9 +18,14 @@ class RagasEvaluator(EvaluatorInterface):
         self._thresholds = thresholds or {}
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
-        from ragas import evaluate as ragas_evaluate
-        from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
         from datasets import Dataset
+        from ragas import evaluate as ragas_evaluate
+        from ragas.metrics import (
+            answer_relevancy,
+            context_precision,
+            context_recall,
+            faithfulness,
+        )
 
         data = {
             "question": [s.query for s in samples],

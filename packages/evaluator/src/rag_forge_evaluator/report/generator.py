@@ -6,7 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from rag_forge_evaluator.engine import EvaluationResult, MetricResult, SampleResult
+from rag_forge_evaluator.engine import EvaluationResult, SampleResult
 from rag_forge_evaluator.maturity import RMM_CRITERIA, RMMLevel
 from rag_forge_evaluator.report.radar import generate_radar_svg
 

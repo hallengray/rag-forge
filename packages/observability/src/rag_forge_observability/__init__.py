@@ -1,3 +1,5 @@
 """RAG-Forge Observability: OpenTelemetry tracing, Langfuse, and drift detection."""
 
-__version__ = "0.1.0"
+from rag_forge_observability.tracing import SpanAttributes, TracingManager
+
+__all__ = ["SpanAttributes", "TracingManager"]

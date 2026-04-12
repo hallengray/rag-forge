@@ -1,12 +1,17 @@
+import { runPythonModule } from "@rag-forge/shared";
+
 export async function handleRagStatus(): Promise<string> {
-  return JSON.stringify({
-    status: "not_implemented",
-    message: "RAG status tool is not yet implemented. Coming in Phase 1.",
-    pipeline: {
-      indexed: false,
-      documentCount: 0,
-      chunkCount: 0,
-      cacheHitRate: null,
-    },
+  const result = await runPythonModule({
+    module: "rag_forge_core.cli",
+    args: ["status"],
   });
+
+  if (result.exitCode !== 0) {
+    return result.stdout || JSON.stringify({
+      status: "error",
+      message: result.stderr || "Failed to get pipeline status",
+    });
+  }
+
+  return result.stdout;
 }

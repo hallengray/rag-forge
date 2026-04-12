@@ -253,6 +253,25 @@ def cmd_query(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_status(args: argparse.Namespace) -> None:
+    """Check pipeline status."""
+    collection = args.collection or "rag-forge"
+    store = QdrantStore()
+    try:
+        count = store.count(collection)
+        indexed = count > 0
+    except (ValueError, KeyError):
+        count = 0
+        indexed = False
+
+    output = {
+        "indexed": indexed,
+        "collection": collection,
+        "chunk_count": count,
+    }
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point for the Python CLI bridge."""
     parser = argparse.ArgumentParser(prog="rag-forge-core")
@@ -302,11 +321,16 @@ def main() -> None:
         help="Max queries per minute",
     )
 
+    status_parser = subparsers.add_parser("status", help="Check pipeline status")
+    status_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     args = parser.parse_args()
     if args.command == "index":
         cmd_index(args)
     elif args.command == "query":
         cmd_query(args)
+    elif args.command == "status":
+        cmd_status(args)
 
 
 if __name__ == "__main__":

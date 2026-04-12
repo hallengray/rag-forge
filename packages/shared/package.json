@@ -1,0 +1,29 @@
+{
+  "name": "@rag-forge/shared",
+  "version": "0.1.0",
+  "description": "Shared utilities for RAG-Forge packages",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/python-bridge.js",
+      "types": "./dist/python-bridge.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "execa": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}

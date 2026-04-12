@@ -69,7 +69,15 @@ export const PILLARS = [
   },
 ] as const;
 
-export const RMM_LEVELS = [
+export type RmmLevel = {
+  level: number;
+  name: string;
+  description: string;
+  criteria: string;
+  highlight?: boolean;
+};
+
+export const RMM_LEVELS: readonly RmmLevel[] = [
   {
     level: 0,
     name: "Naive",
@@ -107,7 +115,7 @@ export const RMM_LEVELS = [
     description: "Drift detection, CI/CD gates, adversarial tests",
     criteria: "All audit thresholds pass",
   },
-] as const;
+];
 
 export const QUICK_START_DEV = `# Install the CLI
 npm install -g rag-forge

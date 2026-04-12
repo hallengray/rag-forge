@@ -1,0 +1,53 @@
+{
+  "modules": {
+    "guardrails": {
+      "description": "InputGuard + OutputGuard security pipeline",
+      "files": [
+        {"src": "security/input_guard.py", "dest": "src/security/input_guard.py"},
+        {"src": "security/output_guard.py", "dest": "src/security/output_guard.py"},
+        {"src": "security/injection.py", "dest": "src/security/injection.py"},
+        {"src": "security/pii.py", "dest": "src/security/pii.py"},
+        {"src": "security/faithfulness.py", "dest": "src/security/faithfulness.py"},
+        {"src": "security/citations.py", "dest": "src/security/citations.py"}
+      ],
+      "dependencies": ["presidio-analyzer>=2.2"]
+    },
+    "caching": {
+      "description": "Semantic query caching with Redis support",
+      "files": [
+        {"src": "context/semantic_cache.py", "dest": "src/caching/semantic_cache.py"},
+        {"src": "context/cache_store.py", "dest": "src/caching/cache_store.py"}
+      ],
+      "dependencies": ["redis>=5.0"]
+    },
+    "reranking": {
+      "description": "Cross-encoder reranking (Cohere + BGE local)",
+      "files": [
+        {"src": "retrieval/reranker.py", "dest": "src/retrieval/reranker.py"}
+      ],
+      "dependencies": ["cohere>=5.0"]
+    },
+    "enrichment": {
+      "description": "Contextual enrichment (document summary prepending)",
+      "files": [
+        {"src": "context/enricher.py", "dest": "src/enrichment/enricher.py"}
+      ],
+      "dependencies": []
+    },
+    "observability": {
+      "description": "OpenTelemetry tracing for all pipeline stages",
+      "files": [
+        {"src": "observability/tracing.py", "dest": "src/observability/tracing.py"}
+      ],
+      "dependencies": ["opentelemetry-api>=1.20", "opentelemetry-sdk>=1.20"]
+    },
+    "hybrid-retrieval": {
+      "description": "Hybrid dense+sparse retrieval with RRF fusion",
+      "files": [
+        {"src": "retrieval/sparse.py", "dest": "src/retrieval/sparse.py"},
+        {"src": "retrieval/hybrid.py", "dest": "src/retrieval/hybrid.py"}
+      ],
+      "dependencies": ["bm25s>=0.2"]
+    }
+  }
+}

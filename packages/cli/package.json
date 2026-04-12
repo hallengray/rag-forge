@@ -12,7 +12,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "src/modules"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -137,6 +137,29 @@ def cmd_golden_add(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_report(args: argparse.Namespace) -> None:
+    """Generate pipeline health report."""
+    from rag_forge_evaluator.report.health import HealthReportGenerator, PipelineHealth
+
+    try:
+        health = PipelineHealth.collect(
+            reports_dir=args.output,
+            collection_name=args.collection or "rag-forge",
+        )
+        gen = HealthReportGenerator(output_dir=args.output)
+        path = gen.generate(health)
+        output = {
+            "success": True,
+            "report_path": str(path),
+            "chunk_count": health.chunk_count,
+            "has_audit": health.latest_audit is not None,
+            "drift_baseline": health.drift_baseline_exists,
+        }
+    except Exception as e:
+        output = {"success": False, "error": str(e)}
+    json.dump(output, sys.stdout)
+
+
 def cmd_golden_validate(args: argparse.Namespace) -> None:
     """Validate a golden set."""
     from rag_forge_evaluator.golden_set import GoldenSet
@@ -155,6 +178,30 @@ def cmd_golden_validate(args: argparse.Namespace) -> None:
     except Exception as e:
         json.dump({"success": False, "error": str(e)}, sys.stdout)
         sys.exit(1)
+
+
+def cmd_assess(args: argparse.Namespace) -> None:
+    """Run RMM assessment."""
+    from rag_forge_evaluator.assess import RMMAssessor
+
+    try:
+        config_data = json.loads(args.config_json) if args.config_json else {}
+        assessor = RMMAssessor()
+        audit_metrics: dict[str, float] | None = None
+        if args.audit_report:
+            audit_metrics = assessor.load_audit_metrics(args.audit_report)
+        result = assessor.assess(config=config_data, audit_metrics=audit_metrics)
+        output = {
+            "success": True,
+            "rmm_level": result.rmm_level,
+            "rmm_name": result.rmm_name,
+            "badge": result.badge,
+            "criteria": result.criteria,
+        }
+    except Exception as e:
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+        sys.exit(1)
+    json.dump(output, sys.stdout)
 
 
 def main() -> None:
@@ -188,8 +235,16 @@ def main() -> None:
     golden_add_parser.add_argument("--difficulty", help="Difficulty: easy | medium | hard")
     golden_add_parser.add_argument("--topic", help="Topic category")
 
+    report_parser = subparsers.add_parser("report", help="Generate pipeline health report")
+    report_parser.add_argument("--output", default="./reports", help="Output directory")
+    report_parser.add_argument("--collection", help="Collection name", default="rag-forge")
+
     golden_validate_parser = subparsers.add_parser("golden-validate", help="Validate golden set")
     golden_validate_parser.add_argument("--golden-set", required=True, help="Path to golden set JSON")
+
+    assess_parser = subparsers.add_parser("assess", help="Run RMM assessment")
+    assess_parser.add_argument("--config-json", help="Pipeline config as JSON")
+    assess_parser.add_argument("--audit-report", help="Path to latest audit JSON report")
 
     args = parser.parse_args()
     if args.command == "audit":
@@ -198,8 +253,12 @@ def main() -> None:
         cmd_cost(args)
     elif args.command == "golden-add":
         cmd_golden_add(args)
+    elif args.command == "report":
+        cmd_report(args)
     elif args.command == "golden-validate":
         cmd_golden_validate(args)
+    elif args.command == "assess":
+        cmd_assess(args)
 
 
 if __name__ == "__main__":

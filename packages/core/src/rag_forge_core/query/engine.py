@@ -6,16 +6,16 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from opentelemetry import trace
-
-from rag_forge_core.generation.base import GenerationProvider
-from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
 from rag_forge_core.retrieval.hybrid import HybridRetriever
-from rag_forge_core.security.input_guard import InputGuard
-from rag_forge_core.security.output_guard import OutputGuard
 
 if TYPE_CHECKING:
+    from opentelemetry import trace
+
     from rag_forge_core.context.semantic_cache import SemanticCache
+    from rag_forge_core.generation.base import GenerationProvider
+    from rag_forge_core.retrieval.base import RetrievalResult, RetrieverProtocol
+    from rag_forge_core.security.input_guard import InputGuard
+    from rag_forge_core.security.output_guard import OutputGuard
 
 _SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question based ONLY on the "

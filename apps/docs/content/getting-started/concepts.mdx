@@ -1,0 +1,41 @@
+---
+title: Core Concepts
+---
+
+# Core Concepts
+
+> The mental model before you build.
+
+## Pipeline stages
+
+RAG-Forge treats a RAG pipeline as a sequence of discrete stages. Each stage has its own CLI command, its own configuration knobs, and its own observability span.
+
+| Stage | Command | What it does |
+|-------|---------|--------------|
+| **Ingest & parse** | `index --source` | Pulls documents, extracts text and structure |
+| **Chunk** | `chunk` | Splits parsed content into retrieval units |
+| **Index** | `index` | Embeds chunks and writes them to a vector store |
+| **Query** | `query` | Retrieves chunks and generates an answer |
+| **Evaluate** | `audit`, `assess` | Measures retrieval and answer quality against a golden set |
+
+You can run stages independently (e.g. `chunk` alone for experimentation) or in the standard `index → query` flow.
+
+## Configuration
+
+Every project has a `rag-forge.config.ts` at its root. This is the single source of truth for chunking strategy, retrieval settings, evaluation thresholds, and provider choices. RAG-Forge validates the config at init time — misconfigurations fail fast via Pydantic, before any documents are touched.
+
+## The RAG Maturity Model (RMM)
+
+The RMM is a 0-to-5 scoring ladder for RAG pipelines. RAG-Forge measures your pipeline against it on every `audit` run, turning "improve RAG quality" into a concrete, measurable goal with a clear next step at each level. See [RAG Maturity Model](/concepts/rmm) for the full breakdown.
+
+## Provider model — bring your own keys
+
+RAG-Forge is provider-agnostic. Embedding, generation, and reranking providers are all user-configurable. Every command that calls an external model accepts an explicit provider flag (e.g. `--embedding openai`, `--generator claude`). You are never locked to a specific vendor, and local/free options (Ollama, mock providers) are always available.
+
+## Observability by default
+
+Every pipeline stage emits an OpenTelemetry span with standardised attributes. Plug in Langfuse or any OTEL-compatible backend and you get request-level tracing with zero extra instrumentation code. See [Observability](/concepts/observability).
+
+## Language boundaries
+
+The CLI and MCP server are TypeScript (Node 20+). All RAG logic — chunking, retrieval, evaluation, tracing — is Python 3.11+. The CLI delegates to Python via a subprocess bridge (`uv run python -m <module>`). This means you can use the CLI from any Node project without caring about Python internals, and you can also call the Python packages directly if you prefer.

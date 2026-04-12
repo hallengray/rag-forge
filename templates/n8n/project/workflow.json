@@ -1,0 +1,46 @@
+{
+  "name": "RAG-Forge AI Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "agent": {
+          "agentType": "toolsAgent"
+        },
+        "options": {
+          "systemMessage": "You are a helpful RAG assistant. Use the available tools to search documents and answer questions."
+        }
+      },
+      "id": "agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "sseEndpoint": "={{ $env.RAG_FORGE_MCP_URL || 'http://localhost:3100/sse' }}"
+      },
+      "id": "mcp",
+      "name": "RAG-Forge MCP",
+      "type": "@n8n/n8n-nodes-langchain.toolMcp",
+      "typeVersion": 1,
+      "position": [500, 500]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
+    },
+    "RAG-Forge MCP": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    }
+  }
+}

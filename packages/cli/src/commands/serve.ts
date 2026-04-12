@@ -13,9 +13,11 @@ function getMcpMainPath(): string {
 export function registerServeCommand(program: Command): void {
   program
     .command("serve")
-    .option("--mcp", "Launch MCP server on stdio")
+    .option("--mcp", "Launch MCP server")
+    .option("--transport <type>", "Transport: stdio | http", "stdio")
+    .option("-p, --port <number>", "Port for HTTP transport", "3100")
     .description("Start the RAG-Forge server")
-    .action(async (options: { mcp?: boolean }) => {
+    .action(async (options: { mcp?: boolean; transport: string; port: string }) => {
       if (!options.mcp) {
         logger.error("Please specify a server mode. Currently supported: --mcp");
         process.exit(1);
@@ -28,9 +30,15 @@ export function registerServeCommand(program: Command): void {
         process.exit(1);
       }
 
-      logger.info("Starting MCP server on stdio...");
+      const args = [mcpMain];
+      if (options.transport === "http") {
+        args.push("--transport", "http", "--port", options.port);
+        logger.info(`Starting MCP server on http://localhost:${options.port}/sse`);
+      } else {
+        logger.info("Starting MCP server on stdio...");
+      }
 
-      const child = spawn(process.execPath, [mcpMain], {
+      const child = spawn(process.execPath, args, {
         stdio: "inherit",
       });
 

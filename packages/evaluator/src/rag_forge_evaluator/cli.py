@@ -85,6 +85,78 @@ def cmd_cost(args: argparse.Namespace) -> None:
     json.dump(output, sys.stdout)
 
 
+def cmd_golden_add(args: argparse.Namespace) -> None:
+    """Add entries to a golden set."""
+    from rag_forge_evaluator.golden_set import GoldenSet
+
+    try:
+        gs = GoldenSet()
+        golden_path = Path(args.golden_set)
+
+        # Load existing if present
+        if golden_path.exists():
+            gs.load(golden_path)
+
+        if args.from_traffic:
+            added = gs.add_from_traffic(args.from_traffic, sample_size=args.sample_size)
+            gs.save(golden_path)
+            json.dump({
+                "success": True,
+                "added": added,
+                "total": len(gs.entries),
+                "golden_set_path": str(golden_path),
+                "source": "traffic",
+            }, sys.stdout)
+        elif args.query and args.keywords:
+            keywords = [k.strip() for k in args.keywords.split(",") if k.strip()]
+            if not keywords:
+                json.dump({"success": False, "error": "--keywords must include at least one non-empty keyword"}, sys.stdout)
+                sys.exit(1)
+            gs.add_entry(
+                query=args.query,
+                expected_answer_keywords=keywords,
+                difficulty=args.difficulty or "medium",
+                topic=args.topic or "general",
+            )
+            gs.save(golden_path)
+            json.dump({
+                "success": True,
+                "added": 1,
+                "total": len(gs.entries),
+                "golden_set_path": str(golden_path),
+                "source": "manual",
+            }, sys.stdout)
+        else:
+            json.dump({
+                "success": False,
+                "error": "Provide --from-traffic <file> or --query <q> --keywords <k1,k2>",
+            }, sys.stdout)
+            sys.exit(1)
+    except Exception as e:
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+        sys.exit(1)
+
+
+def cmd_golden_validate(args: argparse.Namespace) -> None:
+    """Validate a golden set."""
+    from rag_forge_evaluator.golden_set import GoldenSet
+
+    try:
+        gs = GoldenSet()
+        golden_path = Path(args.golden_set)
+        gs.load(golden_path)
+        errors = gs.validate()
+        json.dump({
+            "success": True,
+            "valid": len(errors) == 0,
+            "total_entries": len(gs.entries),
+            "errors": errors,
+        }, sys.stdout)
+    except Exception as e:
+        json.dump({"success": False, "error": str(e)}, sys.stdout)
+        sys.exit(1)
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(prog="rag-forge-evaluator")
@@ -107,11 +179,27 @@ def main() -> None:
     cost_parser.add_argument("--telemetry", required=True, help="Path to telemetry JSON")
     cost_parser.add_argument("--queries-per-day", type=int, help="Projected daily queries")
 
+    golden_add_parser = subparsers.add_parser("golden-add", help="Add golden set entries")
+    golden_add_parser.add_argument("--golden-set", required=True, help="Path to golden set JSON")
+    golden_add_parser.add_argument("--from-traffic", help="Path to telemetry JSONL to sample from")
+    golden_add_parser.add_argument("--sample-size", type=int, default=10, help="Number of entries to sample (>= 1)")
+    golden_add_parser.add_argument("--query", help="Question to add")
+    golden_add_parser.add_argument("--keywords", help="Comma-separated expected keywords")
+    golden_add_parser.add_argument("--difficulty", help="Difficulty: easy | medium | hard")
+    golden_add_parser.add_argument("--topic", help="Topic category")
+
+    golden_validate_parser = subparsers.add_parser("golden-validate", help="Validate golden set")
+    golden_validate_parser.add_argument("--golden-set", required=True, help="Path to golden set JSON")
+
     args = parser.parse_args()
     if args.command == "audit":
         cmd_audit(args)
     elif args.command == "cost":
         cmd_cost(args)
+    elif args.command == "golden-add":
+        cmd_golden_add(args)
+    elif args.command == "golden-validate":
+        cmd_golden_validate(args)
 
 
 if __name__ == "__main__":

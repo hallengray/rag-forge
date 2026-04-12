@@ -31,7 +31,7 @@ class InMemoryCacheStore:
         entry = self._store.get(key)
         if entry is None:
             return None
-        if time.time() > entry.created_at + entry.ttl_seconds:
+        if time.time() >= entry.created_at + entry.ttl_seconds:
             del self._store[key]
             return None
         return entry
@@ -50,7 +50,7 @@ class InMemoryCacheStore:
         valid: list[tuple[str, CacheEntry]] = []
         expired_keys: list[str] = []
         for key, entry in self._store.items():
-            if now > entry.created_at + entry.ttl_seconds:
+            if now >= entry.created_at + entry.ttl_seconds:
                 expired_keys.append(key)
             else:
                 valid.append((key, entry))

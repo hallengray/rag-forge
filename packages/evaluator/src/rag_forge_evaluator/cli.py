@@ -54,6 +54,37 @@ def cmd_audit(args: argparse.Namespace) -> None:
     tracing.shutdown()
 
 
+def cmd_cost(args: argparse.Namespace) -> None:
+    """Run the cost estimation command."""
+    from rag_forge_evaluator.cost import CostEstimator
+
+    try:
+        with Path(args.telemetry).open() as f:
+            data = json.load(f)
+    except Exception as e:
+        json.dump({"success": False, "error": f"Failed to load telemetry: {e}"}, sys.stdout)
+        sys.exit(1)
+
+    usage = data.get("usage", [])
+    raw_qpd = args.queries_per_day if args.queries_per_day is not None else data.get("queries_per_day", 100)
+    queries_per_day = int(raw_qpd)
+    if queries_per_day < 0:
+        json.dump({"success": False, "error": "queries_per_day must be >= 0"}, sys.stdout)
+        sys.exit(1)
+
+    estimator = CostEstimator()
+    report = estimator.estimate(usage, queries_per_day)
+
+    output = {
+        "success": True,
+        "daily_cost": report.daily_cost,
+        "monthly_cost": report.monthly_cost,
+        "queries_per_day": report.queries_per_day,
+        "breakdown": report.breakdown,
+    }
+    json.dump(output, sys.stdout)
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(prog="rag-forge-evaluator")
@@ -72,9 +103,15 @@ def main() -> None:
     )
     audit_parser.add_argument("--pdf", action="store_true", help="Generate PDF report")
 
+    cost_parser = subparsers.add_parser("cost", help="Estimate pipeline costs")
+    cost_parser.add_argument("--telemetry", required=True, help="Path to telemetry JSON")
+    cost_parser.add_argument("--queries-per-day", type=int, help="Projected daily queries")
+
     args = parser.parse_args()
     if args.command == "audit":
         cmd_audit(args)
+    elif args.command == "cost":
+        cmd_cost(args)
 
 
 if __name__ == "__main__":

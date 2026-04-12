@@ -41,6 +41,48 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --all-packages
 
+      - name: Validate release tag matches all package versions
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, sys, tomllib
+
+          expected = os.environ["RELEASE_TAG"].lstrip("v")
+          mismatches = []
+
+          json_files = [
+              "packages/cli/package.json",
+              "packages/mcp/package.json",
+              "packages/shared/package.json",
+          ]
+          toml_files = [
+              "packages/core/pyproject.toml",
+              "packages/evaluator/pyproject.toml",
+              "packages/observability/pyproject.toml",
+          ]
+
+          for p in json_files:
+              data = json.loads(pathlib.Path(p).read_text())
+              found = data.get("version")
+              if found != expected:
+                  mismatches.append((p, found))
+
+          for p in toml_files:
+              data = tomllib.loads(pathlib.Path(p).read_text())
+              found = data.get("project", {}).get("version")
+              if found != expected:
+                  mismatches.append((p, found))
+
+          if mismatches:
+              print(f"Release tag version: {expected}")
+              print("Version mismatches:")
+              for p, found in mismatches:
+                  print(f"  {p}: {found}")
+              sys.exit(1)
+          print(f"All package versions match release tag {expected}.")
+          PY
+
       - name: Build TypeScript packages
         run: pnpm run build
 

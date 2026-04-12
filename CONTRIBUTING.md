@@ -147,6 +147,14 @@ RAG-Forge publishes 6 packages: 3 to npm and 3 to PyPI. All releases are automat
 
 ### Automated Release (Standard Workflow)
 
+0. Verify package names are available (or already owned by this org/user) before the first publish:
+
+   ```bash
+   bash scripts/check-publish-names.sh
+   ```
+
+   The script exits non-zero if any name is taken or if a registry lookup fails, so it is safe to wire into pre-release automation.
+
 1. Bump the version in all 6 package files (must match):
    - `packages/cli/package.json`
    - `packages/mcp/package.json`

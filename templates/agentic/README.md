@@ -1,5 +1,5 @@
 # Agentic RAG Template
 
-Complex multi-hop reasoning with multi-query decomposition, corrective RAG loop (CRAG), and graph-based retrieval.
+Complex multi-hop reasoning with multi-query decomposition and hybrid retrieval.
 
-**Status:** Coming in Phase 3.
+Use: `rag-forge init agentic`

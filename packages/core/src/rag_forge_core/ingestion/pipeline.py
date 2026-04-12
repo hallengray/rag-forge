@@ -137,8 +137,6 @@ class IngestionPipeline:
                     span.set_attribute("batch_count", batch_count)
 
             # 5. Create collection and upsert to vector store
-            self.store.create_collection(self.collection_name, self.embedder.dimension())
-
             items = [
                 VectorItem(
                     id=str(uuid.uuid4()),
@@ -154,6 +152,7 @@ class IngestionPipeline:
             ]
 
             with self._span("rag-forge.store") as span:
+                self.store.create_collection(self.collection_name, self.embedder.dimension())
                 indexed_count = self.store.upsert(self.collection_name, items)
                 if span is not None:
                     span.set_attribute("chunks_indexed", indexed_count)

@@ -29,6 +29,7 @@ class TestTracingManager:
             manager.enable()
             assert manager.is_enabled()
             manager.shutdown()
+            assert not manager.is_enabled()
 
     def test_custom_service_name(self) -> None:
         manager = TracingManager(service_name="my-rag-app")

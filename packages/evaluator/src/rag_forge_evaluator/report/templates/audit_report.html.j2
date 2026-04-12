@@ -6,84 +6,172 @@
     <title>RAG-Forge Audit Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; }
-        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem; }
-        h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
-        h2 { font-size: 1.3rem; margin: 1.5rem 0 1rem; }
-        .timestamp { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
-        .badge { display: inline-block; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.5rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; padding: 2rem; line-height: 1.6; }
+        .container { max-width: 960px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 2rem 2.5rem; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.25rem; font-weight: 700; }
+        .header .timestamp { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
+        .content { padding: 2rem 2.5rem; }
+        h2 { font-size: 1.3rem; margin: 2rem 0 1rem; color: #1a1a2e; font-weight: 600; }
+        .badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 6px; font-weight: 700; font-size: 1.05rem; margin-bottom: 1.5rem; }
         .badge-green { background: #d4edda; color: #155724; }
         .badge-yellow { background: #fff3cd; color: #856404; }
         .badge-red { background: #f8d7da; color: #721c24; }
-        .summary { display: flex; gap: 2rem; margin-bottom: 2rem; }
-        .summary-card { flex: 1; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; text-align: center; }
-        .summary-card .value { font-size: 2rem; font-weight: bold; }
-        .summary-card .label { color: #666; font-size: 0.85rem; }
+        .summary { display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .summary-card { flex: 1; min-width: 140px; padding: 1.25rem; border: 1px solid #e8eaed; border-radius: 8px; text-align: center; background: #fafbfc; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .summary-card .value { font-size: 2rem; font-weight: 700; color: #1a1a2e; }
+        .summary-card .label { color: #666; font-size: 0.85rem; margin-top: 0.25rem; }
+        .radar-container { text-align: center; margin: 1.5rem 0 2rem; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; font-weight: 600; }
-        .pass { color: #155724; font-weight: bold; }
-        .fail { color: #721c24; font-weight: bold; }
-        .recommendations { background: #f8f9fa; padding: 1.5rem; border-radius: 4px; margin-bottom: 2rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        .pass { color: #155724; font-weight: 700; }
+        .fail { color: #721c24; font-weight: 700; }
+        .score-bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; margin-left: 0.5rem; }
+        .score-bar-bg { display: inline-block; width: 80px; height: 8px; border-radius: 4px; background: #e8eaed; vertical-align: middle; margin-left: 0.5rem; }
+        .trend { font-size: 1.1rem; }
+        .recommendations { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem 2rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #ffc107; }
         .recommendations li { margin-bottom: 0.5rem; padding-left: 0.5rem; }
-        .footer { text-align: center; color: #999; font-size: 0.8rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        .worst-queries { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; padding: 1.5rem 2rem; margin-bottom: 2rem; }
+        .worst-queries h3 { color: #721c24; margin-bottom: 1rem; font-size: 1.1rem; }
+        .worst-query-item { padding: 0.75rem 0; border-bottom: 1px solid #fed7d7; }
+        .worst-query-item:last-child { border-bottom: none; }
+        .worst-query-item .query { font-weight: 600; color: #333; }
+        .worst-query-item .meta { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .root-cause-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: #e8eaed; color: #555; }
+        .root-cause-retrieval { background: #e3f2fd; color: #1565c0; }
+        .root-cause-generation { background: #fce4ec; color: #c62828; }
+        .root-cause-none { background: #e8f5e9; color: #2e7d32; }
+        details { margin-bottom: 2rem; }
+        details summary { cursor: pointer; font-weight: 600; font-size: 1.1rem; color: #1a1a2e; padding: 0.75rem 0; }
+        details summary:hover { color: #0f3460; }
+        .sample-table { font-size: 0.9rem; }
+        .sample-table td { vertical-align: top; }
+        .query-text { max-width: 300px; word-wrap: break-word; }
+        .highlight-worst { background: #fff5f5; }
+        .footer { text-align: center; color: #999; font-size: 0.8rem; padding: 1.5rem 2.5rem; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>RAG-Forge Audit Report</h1>
-        <p class="timestamp">Generated: {{ timestamp }}</p>
-
-        {% if rmm_level <= 1 %}
-        <div class="badge badge-red">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
-        {% elif rmm_level <= 3 %}
-        <div class="badge badge-yellow">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
-        {% else %}
-        <div class="badge badge-green">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
-        {% endif %}
-
-        <div class="summary">
-            <div class="summary-card">
-                <div class="value">{{ "%.2f"|format(overall_score) }}</div>
-                <div class="label">Overall Score</div>
-            </div>
-            <div class="summary-card">
-                <div class="value {% if passed %}pass{% else %}fail{% endif %}">{{ "PASS" if passed else "FAIL" }}</div>
-                <div class="label">Status</div>
-            </div>
-            <div class="summary-card">
-                <div class="value">{{ samples_evaluated }}</div>
-                <div class="label">Samples Evaluated</div>
-            </div>
+        <div class="header">
+            <h1>RAG-Forge Audit Report</h1>
+            <p class="timestamp">Generated: {{ timestamp }}</p>
         </div>
 
-        <h2>Metrics</h2>
-        <table>
-            <thead>
-                <tr><th>Metric</th><th>Score</th><th>Threshold</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-                {% for m in metrics %}
-                <tr>
-                    <td>{{ m.name }}</td>
-                    <td>{{ "%.2f"|format(m.score) }}</td>
-                    <td>{{ "%.2f"|format(m.threshold) }}</td>
-                    <td class="{% if m.passed %}pass{% else %}fail{% endif %}">{{ "PASS" if m.passed else "FAIL" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="content">
+            {% if rmm_level <= 1 %}
+            <div class="badge badge-red">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
+            {% elif rmm_level <= 3 %}
+            <div class="badge badge-yellow">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
+            {% else %}
+            <div class="badge badge-green">RMM-{{ rmm_level }}: {{ rmm_name }}</div>
+            {% endif %}
 
-        {% if recommendations %}
-        <div class="recommendations">
-            <h2>Recommendations</h2>
-            <ul>
-                {% for rec in recommendations %}
-                <li>{{ rec }}</li>
+            <div class="summary">
+                <div class="summary-card">
+                    <div class="value">{{ "%.2f"|format(overall_score) }}</div>
+                    <div class="label">Overall Score</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value {% if passed %}pass{% else %}fail{% endif %}">{{ "PASS" if passed else "FAIL" }}</div>
+                    <div class="label">Status</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">{{ samples_evaluated }}</div>
+                    <div class="label">Samples Evaluated</div>
+                </div>
+            </div>
+
+            <div class="radar-container">
+                {{ radar_svg | safe }}
+            </div>
+
+            <h2>Metrics</h2>
+            <table>
+                <thead>
+                    <tr><th>Metric</th><th>Score</th><th>Threshold</th><th>Trend</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for m in metrics %}
+                    <tr>
+                        <td>{{ m.name }}</td>
+                        <td>
+                            {{ "%.2f"|format(m.score) }}
+                            <span class="score-bar-bg">
+                                <span class="score-bar" style="width: {{ (m.score * 80)|int }}px; background: {% if m.passed %}#28a745{% else %}#dc3545{% endif %};"></span>
+                            </span>
+                        </td>
+                        <td>{{ "%.2f"|format(m.threshold) }}</td>
+                        <td class="trend">{{ trends.get(m.name, "") }}</td>
+                        <td class="{% if m.passed %}pass{% else %}fail{% endif %}">{{ "PASS" if m.passed else "FAIL" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if recommendations %}
+            <div class="recommendations">
+                <h2 style="margin-top: 0;">Recommendations</h2>
+                <ul>
+                    {% for rec in recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if worst_samples %}
+            <div class="worst-queries">
+                <h3>Worst Performing Queries</h3>
+                {% for s in worst_samples %}
+                <div class="worst-query-item">
+                    <div class="query">{{ s.query[:100] }}{% if s.query|length > 100 %}...{% endif %}</div>
+                    <div class="meta">
+                        Worst metric: <strong>{{ s.worst_metric }}</strong>
+                        ({{ "%.2f"|format(s.metrics[s.worst_metric]) if s.worst_metric in s.metrics else "N/A" }})
+                        &mdash;
+                        <span class="root-cause-badge root-cause-{{ s.root_cause }}">{{ s.root_cause }}</span>
+                    </div>
+                </div>
                 {% endfor %}
-            </ul>
+            </div>
+            {% endif %}
+
+            {% if sample_results %}
+            <details>
+                <summary>Per-Sample Breakdown ({{ sample_results|length }} samples)</summary>
+                <table class="sample-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Query</th>
+                            {% for m in metrics %}
+                            <th>{{ m.name }}</th>
+                            {% endfor %}
+                            <th>Worst</th>
+                            <th>Root Cause</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sr in sample_results %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td class="query-text">{{ sr.query[:100] }}{% if sr.query|length > 100 %}...{% endif %}</td>
+                            {% for m in metrics %}
+                            <td class="{% if m.name == sr.worst_metric %}highlight-worst{% endif %}">
+                                {{ "%.2f"|format(sr.metrics.get(m.name, 0)) }}
+                            </td>
+                            {% endfor %}
+                            <td><strong>{{ sr.worst_metric }}</strong></td>
+                            <td><span class="root-cause-badge root-cause-{{ sr.root_cause }}">{{ sr.root_cause }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </details>
+            {% endif %}
         </div>
-        {% endif %}
 
         <div class="footer">Generated by RAG-Forge v0.1.0</div>
     </div>

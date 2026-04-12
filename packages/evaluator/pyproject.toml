@@ -11,6 +11,10 @@ dependencies = [
     "openai>=1.30",
 ]
 
+[project.optional-dependencies]
+ragas = ["ragas>=0.2"]
+deepeval = ["deepeval>=1.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

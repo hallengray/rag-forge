@@ -1,20 +1,16 @@
 name: RAG Audit Gate
 
-# This workflow template is used by scaffolded projects to gate PRs on evaluation quality.
-# It runs rag-forge audit and blocks merge if faithfulness drops below the configured threshold.
-#
-# To use in your project:
-# 1. Copy this workflow to your .github/workflows/ directory
-# 2. Configure the golden set path and thresholds in rag-forge.config.ts
-# 3. Ensure rag-forge is installed as a dev dependency
-
 on:
   pull_request:
     branches: [main]
     paths:
-      - "src/**"
+      - "packages/core/src/**"
+      - "packages/evaluator/src/**"
+      - "packages/evaluator/pyproject.toml"
+      - "packages/cli/src/**"
       - "eval/**"
       - "rag-forge.config.*"
+      - ".github/workflows/rag-audit.yml"
 
 jobs:
   audit:
@@ -43,19 +39,33 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
-          uv sync
+          uv sync --all-packages
 
-      # Uncomment when audit command is implemented (Phase 1):
-      # - name: Run RAG Audit
-      #   run: npx rag-forge audit --golden-set eval/golden_set.json
-      #
-      # - name: Check faithfulness gate
-      #   run: |
-      #     SCORE=$(cat reports/audit-report.json | jq '.metrics.faithfulness')
-      #     if (( $(echo "$SCORE < 0.85" | bc -l) )); then
-      #       echo "::error::Faithfulness score ($SCORE) is below threshold (0.85)"
-      #       exit 1
-      #     fi
+      - name: Build CLI
+        run: pnpm exec turbo run build
 
-      - name: Placeholder
-        run: echo "RAG audit gate will be active after Phase 1 implementation"
+      - name: Run RAG Audit
+        run: |
+          uv run python -m rag_forge_evaluator.cli audit \
+            --golden-set eval/golden_set.json \
+            --judge mock \
+            --output ./reports \
+            --evaluator llm-judge
+
+      - name: Check gate metric
+        run: |
+          METRIC="faithfulness"
+          THRESHOLD="0.85"
+          SCORE=$(jq -r ".metrics.${METRIC}.score" reports/audit-report.json)
+          echo "Gate metric: ${METRIC}, Score: ${SCORE}, Threshold: ${THRESHOLD}"
+          if (( $(echo "$SCORE < $THRESHOLD" | bc -l) )); then
+            echo "::error::${METRIC} score (${SCORE}) is below threshold (${THRESHOLD})"
+            exit 1
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-audit-report
+          path: reports/

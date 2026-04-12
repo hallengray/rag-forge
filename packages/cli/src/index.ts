@@ -7,6 +7,8 @@ import { registerServeCommand } from "./commands/serve.js";
 import { registerDriftCommand } from "./commands/drift.js";
 import { registerCostCommand } from "./commands/cost.js";
 import { registerGoldenCommand } from "./commands/golden.js";
+import { registerAssessCommand } from "./commands/assess.js";
+import { registerGuardrailsCommand } from "./commands/guardrails.js";
 
 const program = new Command();
 
@@ -25,5 +27,7 @@ registerServeCommand(program);
 registerDriftCommand(program);
 registerCostCommand(program);
 registerGoldenCommand(program);
+registerAssessCommand(program);
+registerGuardrailsCommand(program);
 
 program.parse();

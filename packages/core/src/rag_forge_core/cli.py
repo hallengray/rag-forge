@@ -113,7 +113,7 @@ def cmd_parse(args: argparse.Namespace) -> None:
             "success": True,
             "files_found": len(documents),
             "files": files_info,
-            "total_characters": sum(f["characters"] for f in files_info),
+            "total_characters": sum(len(doc.text) for doc in documents),
             "parse_errors": errors,
         }
     except Exception as e:

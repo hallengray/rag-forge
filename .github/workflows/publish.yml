@@ -116,21 +116,28 @@ jobs:
       - name: Build all packages
         run: pnpm run build
 
+      # IMPORTANT: pnpm publish (not npm publish) is required because the
+      # workspace packages depend on each other via the workspace:* protocol.
+      # npm publish ships those literally, making the published packages
+      # uninstallable. pnpm publish rewrites workspace:* to the actual
+      # version range before uploading. --no-git-checks is required because
+      # the workflow runs from the release tag, not from main, and pnpm
+      # publish would otherwise refuse.
       - name: Publish @rag-forge/shared
         working-directory: packages/shared
-        run: npm publish --access public --provenance
+        run: pnpm publish --access public --provenance --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @rag-forge/mcp
         working-directory: packages/mcp
-        run: npm publish --access public --provenance
+        run: pnpm publish --access public --provenance --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish rag-forge (CLI)
+      - name: Publish @rag-forge/cli
         working-directory: packages/cli
-        run: npm publish --access public --provenance
+        run: pnpm publish --access public --provenance --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

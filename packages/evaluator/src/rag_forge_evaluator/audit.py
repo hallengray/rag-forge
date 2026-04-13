@@ -13,6 +13,10 @@ from rag_forge_evaluator.engines import create_evaluator
 from rag_forge_evaluator.history import AuditHistory, AuditHistoryEntry
 from rag_forge_evaluator.input_loader import InputLoader
 from rag_forge_evaluator.judge.base import JudgeProvider
+from rag_forge_evaluator.judge.claude_judge import (
+    OnRetryCallback,
+    OverloadBudgetExhaustedError,
+)
 from rag_forge_evaluator.judge.mock_judge import MockJudge
 from rag_forge_evaluator.maturity import RMMLevel, RMMScorer
 from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter, confirm_or_exit
@@ -21,6 +25,34 @@ from rag_forge_evaluator.report.generator import ReportGenerator
 
 class ConfigurationError(ValueError):
     """Raised when an AuditConfig combination is invalid or unsafe to run."""
+
+
+class PartialAuditError(RuntimeError):
+    """Raised when the audit loop aborted mid-run but a partial report exists.
+
+    Wraps the triggering exception. The CLI catches this and exits with code
+    3 (partial success) so CI scripts can distinguish a partial audit from a
+    hard failure. The ``partial_report_path`` is always a written file — the
+    orchestrator only raises this after the partial JSON has hit disk.
+    """
+
+    def __init__(
+        self,
+        partial_report_path: Path,
+        completed_samples: int,
+        total_samples: int,
+        aborted_reason: str,
+        original: BaseException,
+    ) -> None:
+        super().__init__(
+            f"Audit aborted at sample {completed_samples}/{total_samples} "
+            f"({aborted_reason}). Partial report: {partial_report_path}"
+        )
+        self.partial_report_path = partial_report_path
+        self.completed_samples = completed_samples
+        self.total_samples = total_samples
+        self.aborted_reason = aborted_reason
+        self.original = original
 
 
 @dataclass
@@ -38,6 +70,7 @@ class AuditConfig:
     tracer: Any = None  # opentelemetry.trace.Tracer or None
     progress: ProgressReporter | None = None
     assume_yes: bool = False
+    on_judge_retry: OnRetryCallback | None = None
 
 
 @dataclass
@@ -55,7 +88,11 @@ class AuditReport:
 _KNOWN_JUDGE_ALIASES = ("mock", "claude", "claude-sonnet", "openai", "gpt-4o")
 
 
-def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProvider:
+def _create_judge(
+    model: str | None,
+    model_name: str | None = None,
+    on_retry: OnRetryCallback | None = None,
+) -> JudgeProvider:
     """Create a judge provider based on provider alias and optional model id.
 
     Args:
@@ -66,12 +103,14 @@ def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProv
         model_name: Specific model identifier passed through to the judge
             constructor (e.g. "claude-opus-4-6", "gpt-4-turbo"). When None,
             the judge falls back to its env-var/default model.
+        on_retry: Optional callback invoked when ClaudeJudge retries a 529
+            Overloaded error. Ignored for non-Claude judges.
     """
     if model == "mock" or model is None:
         return MockJudge()
     if model in ("claude", "claude-sonnet"):
         from rag_forge_evaluator.judge.claude_judge import ClaudeJudge
-        return ClaudeJudge(model=model_name)
+        return ClaudeJudge(model=model_name, on_retry=on_retry)
     if model in ("openai", "gpt-4o"):
         from rag_forge_evaluator.judge.openai_judge import OpenAIJudge
         return OpenAIJudge(model=model_name)
@@ -163,7 +202,11 @@ class AuditOrchestrator:
                     span.set_attribute("source_type", source_type)
 
             # 2. Create evaluator via factory
-            judge = _create_judge(self.config.judge_model, self.config.judge_model_name)
+            judge = _create_judge(
+                self.config.judge_model,
+                self.config.judge_model_name,
+                on_retry=self.config.on_judge_retry,
+            )
             evaluator = create_evaluator(
                 self.config.evaluator_engine,
                 judge=judge,
@@ -203,13 +246,34 @@ class AuditOrchestrator:
             if estimate.cost_usd > 0:
                 confirm_or_exit(assume_yes=self.config.assume_yes)
 
-            # 3. Run evaluation
+            # 3. Run evaluation — wrap in a mid-loop abort guard so that a
+            # crash or Ctrl+C mid-way through a long audit still produces a
+            # partial report with everything scored so far. The alternative
+            # (losing 40 minutes of judge spend because sample 41 of 50
+            # crashed) is unacceptable for paid runs.
             audit_start = time.monotonic()
-            with self._span("rag-forge.evaluate") as span:
-                evaluation = evaluator.evaluate(samples)
-                if span is not None:
-                    span.set_attribute("engine", self.config.evaluator_engine)
-                    span.set_attribute("sample_count", evaluation.samples_evaluated)
+            try:
+                with self._span("rag-forge.evaluate") as span:
+                    evaluation = evaluator.evaluate(samples)
+                    if span is not None:
+                        span.set_attribute("engine", self.config.evaluator_engine)
+                        span.set_attribute("sample_count", evaluation.samples_evaluated)
+            except (Exception, KeyboardInterrupt) as exc:
+                partial_path = self._maybe_write_partial_report(
+                    evaluator=evaluator,
+                    total_samples=len(samples),
+                    exc=exc,
+                )
+                if partial_path is None:
+                    raise
+                completed = len(getattr(evaluator, "partial_sample_results", []))
+                raise PartialAuditError(
+                    partial_report_path=partial_path,
+                    completed_samples=completed,
+                    total_samples=len(samples),
+                    aborted_reason=_classify_abort(exc),
+                    original=exc,
+                ) from exc
 
             # 4. Score against RMM
             metric_map = {m.name: m.score for m in evaluation.metrics}
@@ -273,3 +337,42 @@ class AuditOrchestrator:
                 samples_evaluated=evaluation.samples_evaluated,
                 pdf_report_path=pdf_report_path,
             )
+
+    def _maybe_write_partial_report(
+        self,
+        evaluator: Any,
+        total_samples: int,
+        exc: BaseException,
+    ) -> Path | None:
+        """Flush whatever has been scored so far to audit-report.partial.json.
+
+        Returns the path to the partial report, or None if the evaluator
+        doesn't expose partial state (e.g. the RAGAS engine, which batches
+        internally and has no mid-loop hook). Never raises — a failure here
+        would shadow the real exception the caller is about to re-raise.
+        """
+        partial = getattr(evaluator, "partial_sample_results", None)
+        if not partial:
+            return None
+        try:
+            aggregates_fn = getattr(evaluator, "compute_partial_aggregates", None)
+            partial_metrics = aggregates_fn() if callable(aggregates_fn) else {}
+            generator = ReportGenerator(output_dir=self.config.output_dir)
+            return generator.generate_partial_json(
+                sample_results=partial,
+                total_samples=total_samples,
+                aborted_reason=_classify_abort(exc),
+                partial_metrics=partial_metrics,
+                error_message=f"{type(exc).__name__}: {exc}",
+            )
+        except Exception:
+            return None
+
+
+def _classify_abort(exc: BaseException) -> str:
+    """Translate an exception into a short, machine-readable abort reason."""
+    if isinstance(exc, KeyboardInterrupt):
+        return "keyboard_interrupt"
+    if isinstance(exc, OverloadBudgetExhaustedError):
+        return "retry_budget_exhausted"
+    return "unhandled_exception"

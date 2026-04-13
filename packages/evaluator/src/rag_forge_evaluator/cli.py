@@ -10,9 +10,32 @@ import json
 import sys
 from pathlib import Path
 
-from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator
+from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator, PartialAuditError
+from rag_forge_evaluator.judge.claude_judge import OverloadBudgetExhaustedError
 from rag_forge_evaluator.progress import StderrProgressReporter
 from rag_forge_observability.tracing import TracingManager
+
+# Exit codes. Documented in --help and release notes. CI scripts can
+# distinguish a partial audit (3) from a usage error (2, argparse default)
+# or a hard failure (1) or a clean run (0).
+EXIT_OK = 0
+EXIT_HARD_FAILURE = 1
+EXIT_PARTIAL = 3
+
+
+def _stderr_retry_notice(attempt: int, elapsed: float, budget: float) -> None:
+    """Print a one-line retry notice to stderr when ClaudeJudge hits a 529.
+
+    Stays off the ProgressReporter protocol on purpose: the judge has multiple
+    callers (tests, programmatic use, MCP server) and shouldn't unilaterally
+    decide that stderr is the right output channel. The CLI is the one place
+    that knows stderr is where progress already lives, so the wiring lives here.
+    """
+    sys.stderr.write(
+        f"  [judge: 529 overload, retry {attempt}, "
+        f"elapsed {elapsed:.0f}s / {budget:.0f}s budget]\n"
+    )
+    sys.stderr.flush()
 
 # Ensure line-buffered output when invoked as a subprocess on Windows.
 # Without this, a long-running audit looks completely frozen until exit
@@ -43,9 +66,42 @@ def cmd_audit(args: argparse.Namespace) -> None:
         tracer=tracer,
         progress=StderrProgressReporter(),
         assume_yes=args.yes,
+        on_judge_retry=_stderr_retry_notice,
     )
 
-    report = AuditOrchestrator(config).run()
+    try:
+        report = AuditOrchestrator(config).run()
+    except PartialAuditError as partial:
+        # Partial-run artifact is already on disk. Print a diagnostic and
+        # return a distinct exit code so CI scripts can branch on it.
+        sys.stderr.write(
+            f"\nAudit aborted at sample {partial.completed_samples}/{partial.total_samples} "
+            f"({partial.aborted_reason}).\n"
+            f"Partial report: {partial.partial_report_path}\n"
+            f"Original error: {type(partial.original).__name__}: {partial.original}\n"
+        )
+        if isinstance(partial.original, OverloadBudgetExhaustedError):
+            sys.stderr.write(
+                "\nAnthropic was in a sustained 529 overload event. Options:\n"
+                "  (a) wait 10-15 minutes and re-run\n"
+                "  (b) switch judges with --judge openai\n"
+                "  (c) increase the budget: "
+                "RAG_FORGE_JUDGE_OVERLOAD_BUDGET_SECONDS=600\n"
+            )
+        json.dump(
+            {
+                "success": False,
+                "partial": True,
+                "partial_report_path": str(partial.partial_report_path),
+                "completed_samples": partial.completed_samples,
+                "total_samples": partial.total_samples,
+                "aborted_reason": partial.aborted_reason,
+                "error": f"{type(partial.original).__name__}: {partial.original}",
+            },
+            sys.stdout,
+        )
+        tracing.shutdown()
+        sys.exit(EXIT_PARTIAL)
 
     output = {
         "success": True,

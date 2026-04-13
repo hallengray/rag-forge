@@ -19,6 +19,10 @@ from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter,
 from rag_forge_evaluator.report.generator import ReportGenerator
 
 
+class ConfigurationError(ValueError):
+    """Raised when an AuditConfig combination is invalid or unsafe to run."""
+
+
 @dataclass
 class AuditConfig:
     """Configuration for an audit run."""
@@ -73,9 +77,38 @@ class AuditOrchestrator:
     """Orchestrates the full audit pipeline."""
 
     def __init__(self, config: AuditConfig) -> None:
+        self._validate_config(config)
         self.config = config
         self._tracer = config.tracer
         self._progress: ProgressReporter = config.progress or NullProgressReporter()
+
+    @staticmethod
+    def _validate_config(config: AuditConfig) -> None:
+        """Reject unsafe combinations before any judge calls happen.
+
+        Currently guards against ``--evaluator ragas --judge claude`` (or any
+        non-OpenAI/non-mock judge), because the RAGAS engine uses its own
+        internal OpenAI-backed judge regardless of the top-level ``--judge``
+        flag. Letting the run start would silently use a different model than
+        the user requested and would fail with an opaque auth error on
+        customers who don't have an OPENAI_API_KEY.
+
+        Full claude-judge propagation through RAGAS is tracked for v0.1.2 via
+        a LangchainLLMWrapper around ClaudeJudge.
+        """
+        if config.evaluator_engine == "ragas":
+            judge = config.judge_model
+            if judge is not None and judge not in ("openai", "gpt-4o", "mock"):
+                msg = (
+                    f"--evaluator ragas does not honor --judge {judge!r}. "
+                    "The RAGAS engine uses its own OpenAI-backed judge internally, "
+                    "so the requested judge model would be silently ignored. "
+                    "Either:\n"
+                    "  1. Use --evaluator llm-judge (which honors --judge), or\n"
+                    "  2. Set OPENAI_API_KEY and pass --judge openai.\n"
+                    "Full claude-judge propagation through RAGAS is tracked for v0.1.2."
+                )
+                raise ConfigurationError(msg)
 
     def _span(self, name: str) -> Any:
         """Return an active span context manager, or a no-op if no tracer is configured."""

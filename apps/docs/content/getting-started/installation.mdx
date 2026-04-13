@@ -29,15 +29,32 @@ rag-forge --version
 
 ## Install the Python runtime
 
-The CLI delegates all pipeline and evaluation work to Python packages. Install them with `uv`:
+The CLI delegates all pipeline and evaluation work to Python packages. `rag-forge-core` and `rag-forge-observability` are libraries (you import them); `rag-forge-evaluator` ships a `rag-forge-eval` CLI entry point.
+
+The recommended setup creates a dedicated venv outside your project so the audit toolchain is isolated from your application's dependencies:
 
 ```bash
-uv tool install rag-forge-core
-uv tool install rag-forge-evaluator
+# One-time setup
+mkdir -p ~/.rag-forge && cd ~/.rag-forge
+uv venv
+source .venv/bin/activate    # macOS/Linux
+# .venv\Scripts\activate     # Windows
+
+uv pip install rag-forge-core rag-forge-evaluator rag-forge-observability
+```
+
+Verify:
+
+```bash
+rag-forge-eval --help
+python -c "import rag_forge_core; print(rag_forge_core.__name__)"
 ```
 
 `rag-forge-core` handles chunking, embedding, retrieval, and generation.
 `rag-forge-evaluator` handles RAGAS/DeepEval scoring and the RAG Maturity Model audit.
+`rag-forge-observability` provides OpenTelemetry tracing and drift detection primitives.
+
+> **Note:** The `rag-forge` npm CLI invokes the Python evaluator via subprocess, so it expects `python` and these packages to be on `PATH`. If you use a dedicated venv (recommended), make sure it's activated when you run `rag-forge audit`.
 
 ## Next steps
 

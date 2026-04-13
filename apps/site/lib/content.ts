@@ -10,14 +10,14 @@ export const SITE = {
   contributing:
     "https://github.com/hallengray/rag-forge/blob/main/CONTRIBUTING.md",
   releaseNotes:
-    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.1.md",
+    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.3.md",
   author: "Femi Adedayo",
 } as const;
 
 // Launch-phase trust signals. Avoid synthetic download counts on a
 // brand-new package — real numbers go here once they're real.
 export const TRUST = {
-  status: "v0.1.1 just shipped",
+  status: "v0.1.3 just shipped",
   license: "MIT",
   publishedVia: "OIDC Trusted Publishers",
   earlyAdopter: "Be one of the first 100",
@@ -28,7 +28,7 @@ export const HERO = {
   subheadline:
     "RAG-Forge audits any RAG pipeline against the RAG Maturity Model. Detect hallucinations, retrieval bypass, silent quality regressions, and cost drift before they ship — with a single CLI that works on your existing stack.",
   installCommand: "npm install -g @rag-forge/cli",
-  versionBadge: "v0.1.1 — Post-audit hardening release",
+  versionBadge: "v0.1.3 — Audit resilience",
 } as const;
 
 export type Citation = {
@@ -182,22 +182,22 @@ export const COMPARISON_CITATIONS: Readonly<Record<string, Citation>> = {
   },
 };
 
-// What's new in v0.1.1 — surfaced on the landing page so visitors who
+// What's new in v0.1.3 — surfaced on the landing page so visitors who
 // hit the site after the launch announcement land on something concrete.
 export const WHATS_NEW = {
-  version: "v0.1.1",
-  tagline: "Post-audit hardening release",
+  version: "v0.1.3",
+  tagline: "Audit resilience — partial reports and configurable retry budget",
   date: "2026-04-13",
   highlights: [
-    "Pre-run cost + time estimates so you know what an audit costs before you pay for it",
-    "Configurable judge model — pick Claude Opus, GPT-4 Turbo, or any other supported model via --judge-model",
-    "Skip-aware aggregation: parse failures and incomplete judge outputs no longer silently zero your scores",
-    "PHI/PII redaction by default in progress streams (set RAG_FORGE_LOG_QUERIES=1 to opt in)",
-    "Honest about what RAGAS does and doesn't honor — fail-loud guards on unsupported judge/evaluator combinations",
-    "12 bugs fixed end-to-end after a real production audit run",
+    "Partial audit-report.partial.json on mid-loop abort — never lose progress from a crash, Ctrl+C, or sustained overload",
+    "Configurable RAG_FORGE_JUDGE_OVERLOAD_BUDGET_SECONDS (default 300s) so long audits survive sustained Anthropic capacity events",
+    "Real-time 529 retry notices stream to stderr so long-running audits never look frozen",
+    "New exit code 3 for partial audits — CI scripts can branch on partial vs hard failure vs clean run",
+    "OverloadBudgetExhaustedError wraps the underlying 529 with actionable fallback options",
+    "Dual-surface partial reports — top-level metrics null for screenshot safety, subset aggregates namespaced with caveats",
   ],
   releaseNotesUrl:
-    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.1.md",
+    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.3.md",
 } as const;
 
 export const COMPARISON = {

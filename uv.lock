@@ -3203,7 +3203,7 @@ wheels = [
 
 [[package]]
 name = "rag-forge-core"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -3253,7 +3253,7 @@ provides-extras = ["local", "cohere", "presidio", "redis"]
 
 [[package]]
 name = "rag-forge-evaluator"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/evaluator" }
 dependencies = [
     { name = "anthropic" },
@@ -3289,7 +3289,7 @@ provides-extras = ["ragas", "deepeval", "pdf"]
 
 [[package]]
 name = "rag-forge-observability"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/observability" }
 dependencies = [
     { name = "opentelemetry-api" },

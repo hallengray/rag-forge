@@ -127,3 +127,61 @@ class ReportGenerator:
         output_path = self.output_dir / "audit-report.json"
         output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return output_path
+
+    def generate_partial_json(
+        self,
+        sample_results: list[SampleResult],
+        total_samples: int,
+        aborted_reason: str,
+        partial_metrics: dict[str, dict[str, float | int]] | None = None,
+        error_message: str | None = None,
+    ) -> Path:
+        """Write ``audit-report.partial.json`` when the audit aborts mid-loop.
+
+        Dual-surface design: top-level ``metrics`` and ``rmm_level`` are
+        unconditionally ``null`` so any grep or screenshot of the standard
+        report shape shows a missing field. Subset aggregates live in a
+        namespaced ``partial_metrics`` block with an in-band note so machine
+        consumers that want them can have them without guessing. RMM level is
+        unconditionally omitted — it's a threshold claim about the whole
+        pipeline and computing it over a subset is wrong, not partial.
+        """
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        data: dict[str, object] = {
+            "timestamp": datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "partial": True,
+            "completed_samples": len(sample_results),
+            "total_samples": total_samples,
+            "aborted_reason": aborted_reason,
+            "error_message": error_message,
+            # Top-level full-run fields are null so grep / screenshot of the
+            # standard shape shows an obviously-missing value.
+            "metrics": None,
+            "rmm_level": None,
+            "rmm_name": None,
+            "overall_score": None,
+            "passed": None,
+            "partial_metrics": {
+                "note": (
+                    f"Subset aggregates over {len(sample_results)}/{total_samples} samples. "
+                    "NOT comparable to a full-run report. Not thresholded against RMM. "
+                    "Do not screenshot these numbers without this caveat."
+                ),
+                "by_metric": partial_metrics or {},
+            },
+            "sample_results": [
+                {
+                    "query": s.query,
+                    "response": s.response,
+                    "metrics": s.metrics,
+                    "worst_metric": s.worst_metric,
+                    "root_cause": s.root_cause,
+                }
+                for s in sample_results
+            ],
+        }
+
+        output_path = self.output_dir / "audit-report.partial.json"
+        output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return output_path

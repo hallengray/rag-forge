@@ -1,5 +1,7 @@
 """LLM-as-Judge evaluator that delegates to individual metric evaluators."""
 
+import time
+
 from rag_forge_evaluator.engine import (
     EvaluationResult,
     EvaluationSample,
@@ -13,6 +15,7 @@ from rag_forge_evaluator.metrics.base import MetricEvaluator
 from rag_forge_evaluator.metrics.context_relevance import ContextRelevanceMetric
 from rag_forge_evaluator.metrics.faithfulness import FaithfulnessMetric
 from rag_forge_evaluator.metrics.hallucination import HallucinationMetric
+from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter
 
 
 def _default_metrics() -> list[MetricEvaluator]:
@@ -53,10 +56,12 @@ class LLMJudgeEvaluator(EvaluatorInterface):
         judge: JudgeProvider,
         metrics: list[MetricEvaluator] | None = None,
         thresholds: dict[str, float] | None = None,
+        progress: ProgressReporter | None = None,
     ) -> None:
         self._judge = judge
         self._metrics = metrics or _default_metrics()
         self._thresholds = thresholds or {}
+        self._progress = progress or NullProgressReporter()
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
         if not samples:
@@ -67,15 +72,22 @@ class LLMJudgeEvaluator(EvaluatorInterface):
                 passed=False,
             )
 
-        metric_scores: dict[str, list[float]] = {m.name(): [] for m in self._metrics}
+        metric_outcomes: dict[str, list[tuple[float, bool]]] = {
+            m.name(): [] for m in self._metrics
+        }
         sample_results: list[SampleResult] = []
 
-        for sample in samples:
+        total = len(samples)
+        for i, sample in enumerate(samples, start=1):
+            sample_start = time.monotonic()
             sample_metric_scores: dict[str, float] = {}
+            sample_skipped = 0
             for metric in self._metrics:
                 result = metric.evaluate_sample(sample, self._judge)
-                metric_scores[metric.name()].append(result.score)
+                metric_outcomes[metric.name()].append((result.score, result.skipped))
                 sample_metric_scores[metric.name()] = result.score
+                if result.skipped:
+                    sample_skipped += 1
 
             worst_metric = min(sample_metric_scores, key=sample_metric_scores.get)  # type: ignore[arg-type]
             thresholds_map = {
@@ -94,17 +106,33 @@ class LLMJudgeEvaluator(EvaluatorInterface):
                 )
             )
 
+            self._progress.sample_scored(
+                index=i,
+                total=total,
+                query_preview=sample.query,
+                metrics=sample_metric_scores,
+                skipped_count=sample_skipped,
+                elapsed_seconds=time.monotonic() - sample_start,
+            )
+
         aggregated: list[MetricResult] = []
+        total_skipped = 0
         for metric in self._metrics:
-            scores = metric_scores[metric.name()]
-            mean_score = sum(scores) / len(scores) if scores else 0.0
+            outcomes = metric_outcomes[metric.name()]
+            real_scores = [score for score, skipped in outcomes if not skipped]
+            skipped_count = sum(1 for _, skipped in outcomes if skipped)
+            scored_count = len(real_scores)
+            total_skipped += skipped_count
+            mean_score = sum(real_scores) / scored_count if scored_count else 0.0
             threshold = self._thresholds.get(metric.name(), metric.default_threshold())
             aggregated.append(
                 MetricResult(
                     name=metric.name(),
                     score=round(mean_score, 4),
                     threshold=threshold,
-                    passed=mean_score >= threshold,
+                    passed=scored_count > 0 and mean_score >= threshold,
+                    skipped_count=skipped_count,
+                    scored_count=scored_count,
                 )
             )
 
@@ -117,6 +145,7 @@ class LLMJudgeEvaluator(EvaluatorInterface):
             samples_evaluated=len(samples),
             passed=all(m.passed for m in aggregated),
             sample_results=sample_results,
+            skipped_evaluations=total_skipped,
         )
 
     def supported_metrics(self) -> list[str]:

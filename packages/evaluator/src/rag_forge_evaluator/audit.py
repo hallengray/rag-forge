@@ -1,11 +1,13 @@
 """Audit orchestrator: coordinates evaluation, history, and report generation."""
 
+import time
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from rag_forge_evaluator.cost_estimates import estimate_audit
 from rag_forge_evaluator.engine import EvaluationResult
 from rag_forge_evaluator.engines import create_evaluator
 from rag_forge_evaluator.history import AuditHistory, AuditHistoryEntry
@@ -13,6 +15,7 @@ from rag_forge_evaluator.input_loader import InputLoader
 from rag_forge_evaluator.judge.base import JudgeProvider
 from rag_forge_evaluator.judge.mock_judge import MockJudge
 from rag_forge_evaluator.maturity import RMMLevel, RMMScorer
+from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter, confirm_or_exit
 from rag_forge_evaluator.report.generator import ReportGenerator
 
 
@@ -28,6 +31,8 @@ class AuditConfig:
     thresholds: dict[str, float] | None = None
     evaluator_engine: str = "llm-judge"
     tracer: Any = None  # opentelemetry.trace.Tracer or None
+    progress: ProgressReporter | None = None
+    assume_yes: bool = False
 
 
 @dataclass
@@ -61,6 +66,7 @@ class AuditOrchestrator:
     def __init__(self, config: AuditConfig) -> None:
         self.config = config
         self._tracer = config.tracer
+        self._progress: ProgressReporter = config.progress or NullProgressReporter()
 
     def _span(self, name: str) -> Any:
         """Return an active span context manager, or a no-op if no tracer is configured."""
@@ -92,9 +98,31 @@ class AuditOrchestrator:
                 self.config.evaluator_engine,
                 judge=judge,
                 thresholds=self.config.thresholds,
+                progress=self._progress,
             )
 
+            # 2a. Print banner + confirm (no-op for NullProgressReporter + assume_yes).
+            metric_names = evaluator.supported_metrics()
+            estimate = estimate_audit(
+                sample_count=len(samples),
+                metric_count=len(metric_names),
+                judge_model=judge.model_name(),
+            )
+            self._progress.audit_started(
+                sample_count=len(samples),
+                metric_names=metric_names,
+                judge_model=judge.model_name(),
+                evaluator_engine=self.config.evaluator_engine,
+                estimate=estimate,
+            )
+            # Only prompt when the run will actually spend money. Mock and
+            # local/free judges have cost_usd == 0.0 and should proceed silently
+            # so existing test suites and CI runs are unaffected.
+            if estimate.cost_usd > 0:
+                confirm_or_exit(assume_yes=self.config.assume_yes)
+
             # 3. Run evaluation
+            audit_start = time.monotonic()
             with self._span("rag-forge.evaluate") as span:
                 evaluation = evaluator.evaluate(samples)
                 if span is not None:
@@ -142,6 +170,18 @@ class AuditOrchestrator:
                 overall_score=evaluation.overall_score,
                 passed=evaluation.passed,
             ))
+
+            # 9. Emit completion event.
+            metric_count = len(evaluation.metrics) or 1
+            total_evaluations = evaluation.samples_evaluated * metric_count
+            self._progress.audit_completed(
+                elapsed_seconds=time.monotonic() - audit_start,
+                scored_count=total_evaluations - evaluation.skipped_evaluations,
+                skipped_count=evaluation.skipped_evaluations,
+                overall_score=evaluation.overall_score,
+                rmm_level=int(rmm_level),
+                report_path=str(report_path),
+            )
 
             return AuditReport(
                 evaluation=evaluation,

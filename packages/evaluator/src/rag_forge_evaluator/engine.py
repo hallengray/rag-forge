@@ -17,13 +17,23 @@ class EvaluationSample:
 
 @dataclass
 class MetricResult:
-    """Result of a single metric evaluation."""
+    """Result of a single metric evaluation.
+
+    ``skipped`` indicates the metric could not be scored for this sample
+    (e.g. the judge returned an unparseable response). Aggregation should
+    exclude skipped results rather than treat them as zero. ``skipped_count``
+    and ``scored_count`` are populated on *aggregate* MetricResult objects
+    returned by an evaluator, not per-sample results.
+    """
 
     name: str
     score: float
     threshold: float
     passed: bool
     details: str | None = None
+    skipped: bool = False
+    skipped_count: int = 0
+    scored_count: int = 0
 
 
 @dataclass
@@ -46,6 +56,7 @@ class EvaluationResult:
     samples_evaluated: int
     passed: bool
     sample_results: list[SampleResult] = field(default_factory=list)
+    skipped_evaluations: int = 0
 
 
 class EvaluatorInterface(ABC):

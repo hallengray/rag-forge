@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator
+from rag_forge_evaluator.progress import StderrProgressReporter
 from rag_forge_observability.tracing import TracingManager
 
 
@@ -30,6 +31,8 @@ def cmd_audit(args: argparse.Namespace) -> None:
         thresholds=config_data.get("thresholds"),
         evaluator_engine=args.evaluator,
         tracer=tracer,
+        progress=StderrProgressReporter(),
+        assume_yes=args.yes,
     )
 
     report = AuditOrchestrator(config).run()
@@ -221,6 +224,10 @@ def main() -> None:
         help="Evaluator engine: llm-judge | ragas | deepeval",
     )
     audit_parser.add_argument("--pdf", action="store_true", help="Generate PDF report")
+    audit_parser.add_argument(
+        "--yes", "-y", action="store_true",
+        help="Skip the pre-run confirmation prompt. Required for non-interactive runs.",
+    )
 
     cost_parser = subparsers.add_parser("cost", help="Estimate pipeline costs")
     cost_parser.add_argument("--telemetry", required=True, help="Path to telemetry JSON")

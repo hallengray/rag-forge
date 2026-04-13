@@ -1,9 +1,9 @@
 """Hallucination metric: what percentage of claims lack source support?"""
-import json
 import logging
 
 from rag_forge_evaluator.engine import EvaluationSample, MetricResult
 from rag_forge_evaluator.judge.base import JudgeProvider
+from rag_forge_evaluator.judge.response_parser import parse_judge_json
 
 logger = logging.getLogger(__name__)
 
@@ -36,20 +36,41 @@ class HallucinationMetric:
             f"Context chunks:\n{chunks_text}\n\n"
             f"Response: {sample.response}"
         )
-        try:
-            raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
-            data = json.loads(raw)
-            hallucination_rate = float(data.get("hallucination_rate", 1.0))
-            score = 1.0 - hallucination_rate
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning("Hallucination eval failed: %s", e)
+        raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
+        outcome = parse_judge_json(raw)
+        if not outcome.ok or outcome.data is None:
+            logger.warning("Hallucination parse failed: %s", outcome.error)
             return MetricResult(
                 name="hallucination",
                 score=0.0,
                 threshold=self.default_threshold(),
                 passed=False,
-                details=f"Judge returned invalid response: {e}",
+                details=f"judge response unparseable: {outcome.error}",
+                skipped=True,
             )
+        if "hallucination_rate" not in outcome.data:
+            logger.warning("Hallucination: judge response missing 'hallucination_rate' field")
+            return MetricResult(
+                name="hallucination",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details="judge response missing 'hallucination_rate' field",
+                skipped=True,
+            )
+        try:
+            hallucination_rate = float(outcome.data["hallucination_rate"])
+        except (TypeError, ValueError) as e:
+            logger.warning("Hallucination: 'hallucination_rate' is not a number: %s", e)
+            return MetricResult(
+                name="hallucination",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details=f"'hallucination_rate' not numeric: {e}",
+                skipped=True,
+            )
+        score = 1.0 - hallucination_rate
         return MetricResult(
             name="hallucination",
             score=score,

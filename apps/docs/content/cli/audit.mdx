@@ -42,7 +42,8 @@ The golden set file for a scaffolded project lives at `eval/golden_set.json`.
 |----------|---------|-------------|
 | `RAG_FORGE_JUDGE_MODEL` | provider default | Override the judge model id. Lower precedence than `--judge-model`. |
 | `RAG_FORGE_JUDGE_MAX_TOKENS` | `4096` | Max output tokens per judge call. Bumped from `1024` in v0.1.1 — the old default truncated mid-array on long structured responses. |
-| `RAG_FORGE_JUDGE_MAX_RETRIES` | `5` | Max retries on transient `429`/`5xx` from the judge SDK. |
+| `RAG_FORGE_JUDGE_MAX_RETRIES` | `5` | Max retries on transient `429`/`5xx` from the judge SDK, plus the attempt cap for the 529-specific retry wrapper. |
+| `RAG_FORGE_JUDGE_OVERLOAD_BUDGET_SECONDS` | `300` | Wall-clock budget for 529 Overloaded retries (Anthropic-specific). The retry wrapper exits when *either* `MAX_RETRIES` attempts are exhausted *or* cumulative backoff would exceed this budget — whichever trips first. Raise to `600` for long audits during sustained capacity events. Added in v0.1.3. |
 | `RAG_FORGE_LOG_QUERIES` | unset | Set to `1` to show query previews in the per-sample progress stream. Default is to redact query content (PHI/PII protection). |
 
 ## Pre-run banner and confirmation
@@ -50,6 +51,39 @@ The golden set file for a scaffolded project lives at `eval/golden_set.json`.
 Starting in v0.1.1, `audit` prints a pre-run banner to stderr showing sample count, judge model, evaluator engine, total judge calls, estimated time, and estimated USD cost — and asks for confirmation before any judge calls are made. The npm CLI auto-confirms (the TypeScript wrapper passes `--yes` to the Python subprocess). Direct `python -m rag_forge_evaluator.cli audit ...` invocations require either an interactive terminal or an explicit `--yes` flag.
 
 While the audit runs, a per-sample progress line streams to stderr with metric scores and elapsed time. On completion, a summary line shows total elapsed, scored count, skipped count, overall score, RMM level, and report path.
+
+## Resilience: partial reports and retry budget
+
+Starting in v0.1.3, `audit` is resilient to mid-loop failures. If the run aborts — via `Ctrl+C`, an unhandled exception, or an exhausted 529 retry budget during a sustained Anthropic capacity event — the orchestrator flushes everything scored so far to `audit-report.partial.json` before propagating the error. The partial file preserves per-sample results so a long paid audit never vaporizes its own progress.
+
+Partial reports use a dual-surface design: top-level `metrics`, `rmm_level`, and `overall_score` are unconditionally `null` so the standard report shape visibly lacks data. Subset aggregates live under `partial_metrics.by_metric` with an in-band caveat. RMM level is omitted entirely — threshold claims apply to the whole pipeline, not a subset.
+
+When the Claude judge hits a 529 Overloaded error, the retry wrapper streams a one-line notice to stderr on each retry so a long audit never looks frozen:
+
+```
+  [judge: 529 overload, retry 2, elapsed 6s / 300s budget]
+```
+
+Tune the retry window via `RAG_FORGE_JUDGE_OVERLOAD_BUDGET_SECONDS` (see environment variables above).
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Audit completed successfully; full report written. |
+| `1` | Hard failure — unrecoverable error, no report. |
+| `2` | Usage / config error (e.g. bad flag, missing file). |
+| `3` | **Partial audit** — `audit-report.partial.json` written with everything scored so far. |
+
+CI scripts can branch on exit code 3 to surface partial artifacts without treating them as hard failures:
+
+```bash
+rag-forge audit --input telemetry.jsonl --judge claude --yes
+code=$?
+if [ $code -eq 3 ]; then
+  echo "Partial audit — inspect $OUTDIR/audit-report.partial.json"
+fi
+```
 
 ## Examples
 

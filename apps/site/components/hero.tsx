@@ -51,7 +51,7 @@ export function Hero() {
           </div>
         </div>
 
-        {/* Hero artifact: v0.1.1 terminal mock with banner + per-sample stream */}
+        {/* Hero artifact: v0.1.3 terminal mock with banner + per-sample stream */}
         <div className="mt-16 mx-auto max-w-4xl">
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden shadow-2xl">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-background)]">

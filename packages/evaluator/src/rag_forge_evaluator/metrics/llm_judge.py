@@ -62,6 +62,36 @@ class LLMJudgeEvaluator(EvaluatorInterface):
         self._metrics = metrics or _default_metrics()
         self._thresholds = thresholds or {}
         self._progress = progress or NullProgressReporter()
+        # Partial state — populated incrementally during evaluate() so that if
+        # the loop crashes, the orchestrator can still recover everything that
+        # was scored before the abort and write audit-report.partial.json.
+        self._partial_sample_results: list[SampleResult] = []
+        self._partial_metric_outcomes: dict[str, list[tuple[float, bool]]] = {}
+
+    @property
+    def partial_sample_results(self) -> list[SampleResult]:
+        return self._partial_sample_results
+
+    def compute_partial_aggregates(self) -> dict[str, dict[str, float | int]]:
+        """Compute subset aggregates over whatever has been scored so far.
+
+        Returns a dict of ``metric_name -> {score, scored_count, skipped_count}``
+        using the same mean-over-non-skipped logic as the happy path. Intended
+        for inclusion in ``audit-report.partial.json``'s ``partial_metrics``
+        block — clearly namespaced so no caller mistakes it for a full-run
+        aggregate.
+        """
+        out: dict[str, dict[str, float | int]] = {}
+        for name, outcomes in self._partial_metric_outcomes.items():
+            real = [s for s, skipped in outcomes if not skipped]
+            skipped_count = sum(1 for _, skipped in outcomes if skipped)
+            mean = round(sum(real) / len(real), 4) if real else 0.0
+            out[name] = {
+                "score": mean,
+                "scored_count": len(real),
+                "skipped_count": skipped_count,
+            }
+        return out
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
         if not samples:
@@ -72,10 +102,12 @@ class LLMJudgeEvaluator(EvaluatorInterface):
                 passed=False,
             )
 
-        metric_outcomes: dict[str, list[tuple[float, bool]]] = {
-            m.name(): [] for m in self._metrics
-        }
-        sample_results: list[SampleResult] = []
+        # Reset and alias the partial buffers so mid-loop exceptions leave the
+        # instance holding everything scored so far.
+        self._partial_metric_outcomes = {m.name(): [] for m in self._metrics}
+        self._partial_sample_results = []
+        metric_outcomes = self._partial_metric_outcomes
+        sample_results = self._partial_sample_results
 
         total = len(samples)
         for i, sample in enumerate(samples, start=1):

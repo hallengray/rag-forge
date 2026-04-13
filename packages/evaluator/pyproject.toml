@@ -21,6 +21,7 @@ dependencies = [
     "jinja2>=3.1",
     "anthropic>=0.30",
     "openai>=1.30",
+    "rag-forge-observability>=0.1.1",
 ]
 
 [project.urls]
@@ -33,6 +34,9 @@ Documentation = "https://github.com/hallengray/rag-forge#readme"
 ragas = ["ragas>=0.2.10,<0.3"]
 deepeval = ["deepeval>=1.0"]
 pdf = ["playwright>=1.40"]
+
+[project.scripts]
+rag-forge-eval = "rag_forge_evaluator.cli:main"
 
 [build-system]
 requires = ["hatchling"]

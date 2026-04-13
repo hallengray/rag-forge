@@ -29,7 +29,11 @@ export function registerAuditCommand(program: Command): void {
     .command("audit")
     .option("-i, --input <file>", "Path to telemetry JSONL file")
     .option("-g, --golden-set <file>", "Path to golden set JSON file")
-    .option("-j, --judge <model>", "Judge model: mock | claude | openai", "mock")
+    .option("-j, --judge <model>", "Judge provider: mock | claude | openai", "mock")
+    .option(
+      "--judge-model <name>",
+      "Specific judge model id (e.g. claude-opus-4-6, gpt-4-turbo). Falls back to RAG_FORGE_JUDGE_MODEL env var, then provider default.",
+    )
     .option("-o, --output <dir>", "Output directory for reports", "./reports")
     .option("--evaluator <engine>", "Evaluator engine: llm-judge | ragas | deepeval", "llm-judge")
     .option("--pdf", "Generate PDF report (requires Playwright)")
@@ -39,6 +43,7 @@ export function registerAuditCommand(program: Command): void {
         input?: string;
         goldenSet?: string;
         judge: string;
+        judgeModel?: string;
         output: string;
         evaluator: string;
         pdf?: boolean;
@@ -51,13 +56,30 @@ export function registerAuditCommand(program: Command): void {
         const spinner = ora("Running RAG pipeline audit...").start();
 
         try {
-          const args = ["audit", "--judge", options.judge, "--output", options.output, "--evaluator", options.evaluator];
+          // The TS CLI invokes the Python evaluator via a non-TTY subprocess,
+          // so we always forward --yes to suppress the Python-side confirmation
+          // prompt. The TS layer is the user-facing entry point and is
+          // responsible for any user interaction. v0.1.2 will add a TS-side
+          // confirmation prompt before launching the subprocess.
+          const args = [
+            "audit",
+            "--judge",
+            options.judge,
+            "--output",
+            options.output,
+            "--evaluator",
+            options.evaluator,
+            "--yes",
+          ];
 
           if (options.input) {
             args.push("--input", options.input);
           }
           if (options.goldenSet) {
             args.push("--golden-set", options.goldenSet);
+          }
+          if (options.judgeModel) {
+            args.push("--judge-model", options.judgeModel);
           }
           if (options.pdf) {
             args.push("--pdf");

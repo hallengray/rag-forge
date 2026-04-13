@@ -1,4 +1,4 @@
-import { ArrowRight, Github } from "lucide-react";
+import { ArrowRight, Github, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
 import { HERO, SITE } from "@/lib/content";
@@ -18,6 +18,16 @@ export function Hero() {
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
+          <a
+            href={SITE.releaseNotes}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 font-mono text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition-colors"
+          >
+            <Sparkles className="h-3 w-3" />
+            <span>{HERO.versionBadge}</span>
+            <ArrowRight className="h-3 w-3" />
+          </a>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.05]">
             {HERO.headline}
           </h1>
@@ -41,7 +51,7 @@ export function Hero() {
           </div>
         </div>
 
-        {/* Hero artifact: terminal mock */}
+        {/* Hero artifact: v0.1.1 terminal mock with banner + per-sample stream */}
         <div className="mt-16 mx-auto max-w-4xl">
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden shadow-2xl">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-background)]">
@@ -52,28 +62,24 @@ export function Hero() {
               </div>
               <span className="text-xs font-mono text-[var(--color-muted)] ml-2">rag-forge audit</span>
             </div>
-            <div className="p-6 font-mono text-sm space-y-2">
-              <div className="text-[var(--color-muted)]">$ rag-forge audit --golden-set qa.json</div>
-              <div className="text-[var(--color-muted)]">Running RAGAS evaluation on 50 samples...</div>
-              <div className="mt-4 space-y-1">
-                <div className="flex justify-between">
-                  <span>faithfulness</span>
-                  <span className="text-[var(--color-accent)]">0.91 PASS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>context_relevance</span>
-                  <span className="text-[var(--color-accent)]">0.84 PASS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>answer_relevance</span>
-                  <span className="text-[var(--color-accent)]">0.88 PASS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>recall_at_k</span>
-                  <span className="text-red-400">0.62 FAIL</span>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+            <div className="p-6 font-mono text-xs sm:text-sm space-y-1 leading-relaxed">
+              <div className="text-[var(--color-muted)]">$ rag-forge audit --golden-set eval/golden_set.json --judge claude</div>
+              <div className="mt-3 text-[var(--color-foreground)]">RAG-Forge Audit</div>
+              <div className="text-[var(--color-foreground)]">===============</div>
+              <div><span className="text-[var(--color-muted)]">  Samples:         </span>19</div>
+              <div><span className="text-[var(--color-muted)]">  Metrics:         </span>4 (faithfulness, context_relevance, answer_relevance, hallucination)</div>
+              <div><span className="text-[var(--color-muted)]">  Judge calls:     </span>76 total</div>
+              <div><span className="text-[var(--color-muted)]">  Judge model:     </span>claude-sonnet-4-20250514</div>
+              <div><span className="text-[var(--color-muted)]">  Estimated cost:  </span>~$1.25 USD</div>
+              <div className="text-[var(--color-muted)]">---</div>
+              <div>[ 1/19] [query redacted]                  faith=0.92  ctx=0.85  ans=0.91  hall=0.95  <span className="text-[var(--color-accent)]">OK</span>  (8.2s)</div>
+              <div>[ 2/19] [query redacted]                  faith=0.88  ctx=0.79  ans=0.90  hall=0.93  <span className="text-[var(--color-accent)]">OK</span>  (9.1s)</div>
+              <div>[ 3/19] [query redacted]                  faith=0.00  ctx=0.00  ans=0.78  hall=0.85  <span className="text-yellow-400">WARN 2 skipped</span>  (11.4s)</div>
+              <div className="text-[var(--color-muted)]">  ...</div>
+              <div className="text-[var(--color-muted)]">---</div>
+              <div>Audit complete in 9m 23s</div>
+              <div>Scored: <span className="text-[var(--color-accent)]">72</span>    Skipped: <span className="text-yellow-400">4</span></div>
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/30">
                     RMM-3

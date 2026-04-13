@@ -1,6 +1,6 @@
 {
   "name": "@rag-forge/shared",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Internal shared utilities for RAG-Forge packages",
   "author": "Femi Adedayo",
   "repository": {
@@ -20,7 +20,7 @@
       "types": "./dist/python-bridge.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"

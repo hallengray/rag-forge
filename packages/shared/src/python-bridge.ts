@@ -16,7 +16,7 @@ export async function runPythonModule(options: PythonBridgeOptions): Promise<Pyt
   const { module, args = [], cwd } = options;
 
   try {
-    const result = await execa("uv", ["run", "python", "-m", module, ...args], {
+    const result = await execa("uv", ["run", "python", "-u", "-m", module, ...args], {
       cwd,
       reject: false,
       timeout: 300_000, // 5 minute timeout

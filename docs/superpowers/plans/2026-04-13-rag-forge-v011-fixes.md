@@ -271,6 +271,12 @@ def parse_judge_json(raw: str) -> ParseOutcome:
     except json.JSONDecodeError:
         pass
 
+    # NOTE: Superseded in production by json.JSONDecoder().raw_decode —
+    # see packages/evaluator/src/rag_forge_evaluator/judge/response_parser.py
+    # for the shipped implementation. The greedy regex below was the
+    # original sketch; the production code scans for `{` matches and
+    # uses raw_decode to find the first valid object, which correctly
+    # handles nested braces and multi-object responses.
     match = _FIRST_OBJECT.search(text)
     if match:
         try:

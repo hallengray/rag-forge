@@ -102,7 +102,8 @@ class StderrProgressReporter:
         estimate: AuditEstimate,
     ) -> None:
         fallback_note = (
-            "  (pricing unknown for this model — using gpt-4o as a conservative fallback)"
+            "  (pricing unknown for this model — using the highest known model pricing "
+            "as a conservative fallback)"
             if estimate.is_fallback_pricing
             else ""
         )

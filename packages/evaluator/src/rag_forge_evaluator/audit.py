@@ -173,15 +173,27 @@ class AuditOrchestrator:
 
             # 2a. Print banner + confirm (no-op for NullProgressReporter + assume_yes).
             metric_names = evaluator.supported_metrics()
+            # The RAGAS engine ignores the configured judge entirely and uses
+            # its own internal gpt-4o-mini regardless of --judge / --judge-model.
+            # Use the actual model the evaluator will invoke for the estimate
+            # so the banner is honest about cost. The validator in
+            # _validate_config has already restricted ragas to --judge openai,
+            # so we only have to handle that one engine specially here.
+            if self.config.evaluator_engine == "ragas":
+                estimate_model = "gpt-4o-mini"
+                banner_judge_model = "gpt-4o-mini (RAGAS internal — judge override ignored)"
+            else:
+                estimate_model = judge.model_name()
+                banner_judge_model = judge.model_name()
             estimate = estimate_audit(
                 sample_count=len(samples),
                 metric_count=len(metric_names),
-                judge_model=judge.model_name(),
+                judge_model=estimate_model,
             )
             self._progress.audit_started(
                 sample_count=len(samples),
                 metric_names=metric_names,
-                judge_model=judge.model_name(),
+                judge_model=banner_judge_model,
                 evaluator_engine=self.config.evaluator_engine,
                 estimate=estimate,
             )
@@ -242,11 +254,11 @@ class AuditOrchestrator:
             ))
 
             # 9. Emit completion event.
-            metric_count = len(evaluation.metrics) or 1
+            metric_count = len(evaluation.metrics)
             total_evaluations = evaluation.samples_evaluated * metric_count
             self._progress.audit_completed(
                 elapsed_seconds=time.monotonic() - audit_start,
-                scored_count=total_evaluations - evaluation.skipped_evaluations,
+                scored_count=max(total_evaluations - evaluation.skipped_evaluations, 0),
                 skipped_count=evaluation.skipped_evaluations,
                 overall_score=evaluation.overall_score,
                 rmm_level=int(rmm_level),

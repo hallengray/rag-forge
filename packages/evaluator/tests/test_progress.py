@@ -20,10 +20,30 @@ def test_estimate_known_model_uses_table_pricing() -> None:
     assert est.judge_calls == 76
     assert est.is_fallback_pricing is False
     # 76 calls * (1500 in + 800 out) tokens = 114000 in + 60800 out
-    # At $3/MTok in + $15/MTok out: 0.342 + 0.912 = 1.254 → rounds to 1.25
-    assert est.cost_usd == pytest.approx(1.25, abs=0.02)
+    # At $3/MTok in + $15/MTok out: 0.342 + 0.912 = 1.254 (unrounded)
+    assert est.cost_usd == pytest.approx(1.254, abs=0.001)
     assert est.minutes_low < est.minutes_high
     assert est.minutes_low > 0
+
+
+def test_estimate_unknown_model_uses_conservative_max_pricing() -> None:
+    """Unknown models should over-estimate, not under-estimate."""
+    est = estimate_audit(sample_count=10, metric_count=4, judge_model="unknown-model")
+    assert est.is_fallback_pricing is True
+    # The most expensive known model under (1500 in + 800 out) is opus
+    # at ($15 in + $75 out per MTok). 40 calls x (1500*15 + 800*75) / 1M = 3.3
+    # That should be MORE expensive than gpt-4o would have estimated (0.66).
+    gpt4o_est = estimate_audit(sample_count=10, metric_count=4, judge_model="gpt-4o")
+    assert est.cost_usd > gpt4o_est.cost_usd
+
+
+def test_estimate_cost_is_unrounded_at_source() -> None:
+    """Tiny costs must survive the cost gate, not get rounded to 0.00."""
+    # 1 sample x 4 metrics x 1500 in x $0.15/MTok + 4 x 800 x $0.60/MTok = $0.0027
+    est = estimate_audit(sample_count=1, metric_count=4, judge_model="gpt-4o-mini")
+    assert est.cost_usd > 0
+    assert est.cost_usd < 0.01  # tiny but non-zero
+    # The orchestrator's cost gate is `if estimate.cost_usd > 0`; this must hold.
 
 
 def test_estimate_unknown_model_falls_back_and_flags() -> None:
@@ -111,13 +131,16 @@ def test_stderr_reporter_flags_fallback_pricing_in_banner() -> None:
     assert "pricing unknown" in buf.getvalue()
 
 
-def test_stderr_reporter_formats_sample_line_with_shortened_names() -> None:
+def test_stderr_reporter_redacts_query_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PHI/PII protection: query content must NOT appear in default stderr output."""
+    monkeypatch.delenv("RAG_FORGE_LOG_QUERIES", raising=False)
     buf = io.StringIO()
     reporter = StderrProgressReporter(stream=buf)
+    sensitive = "Patient John Doe SSN 123-45-6789 with chest pain at 52 years old"
     reporter.sample_scored(
         index=1,
         total=19,
-        query_preview="Adult male, 52 years old, presents with central crushing chest pain",
+        query_preview=sensitive,
         metrics={
             "faithfulness": 0.92,
             "context_relevance": 0.88,
@@ -128,13 +151,32 @@ def test_stderr_reporter_formats_sample_line_with_shortened_names() -> None:
         elapsed_seconds=6.2,
     )
     line = buf.getvalue()
-    assert "[ 1/19]" in line
+    assert "[query redacted]" in line
+    assert "John Doe" not in line
+    assert "SSN" not in line
+    assert "123-45-6789" not in line
+    # Scores still visible so progress is meaningful.
     assert "faith=0.92" in line
-    assert "ctx=0.88" in line
-    assert "ans=0.91" in line
-    assert "hall=0.95" in line
     assert "OK" in line
     assert "6.2s" in line
+
+
+def test_stderr_reporter_shows_query_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    """RAG_FORGE_LOG_QUERIES=1 enables the old preview behavior for local debugging."""
+    monkeypatch.setenv("RAG_FORGE_LOG_QUERIES", "1")
+    buf = io.StringIO()
+    reporter = StderrProgressReporter(stream=buf)
+    reporter.sample_scored(
+        index=1,
+        total=19,
+        query_preview="Adult male, 52 years old, presents with central crushing chest pain",
+        metrics={"faithfulness": 0.92},
+        skipped_count=0,
+        elapsed_seconds=6.2,
+    )
+    line = buf.getvalue()
+    assert "Adult male" in line
+    assert "[query redacted]" not in line
 
 
 def test_stderr_reporter_shows_skipped_warning() -> None:
@@ -166,6 +208,8 @@ def test_stderr_reporter_summary_includes_rmm_and_path() -> None:
     assert "9m 23s" in out
     assert "Scored: 72" in out
     assert "Skipped: 4" in out
+    # Wording covers both parse failures AND incomplete judge outputs.
+    assert "invalid or incomplete" in out
     assert "0.6823" in out
     assert "RMM Level: 1" in out
     assert "audit-report.html" in out

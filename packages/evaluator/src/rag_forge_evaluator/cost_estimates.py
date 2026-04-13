@@ -74,14 +74,25 @@ def estimate_audit(
         judge_model: Model name as it will be passed to the judge provider.
 
     Returns:
-        An ``AuditEstimate`` with judge call count, USD cost, and a minute range.
+        An ``AuditEstimate`` with judge call count, USD cost (unrounded), and
+        a minute range. The cost is intentionally NOT rounded here so callers
+        gating on ``cost_usd > 0`` see tiny non-zero costs accurately —
+        ``round(x, 2)`` could turn $0.0049 into $0.00 and skip confirmation
+        on a real (if cheap) run. Display formatting should round at the
+        presentation layer.
     """
     judge_calls = sample_count * metric_count
 
     price = _PRICE_PER_MTOK.get(judge_model)
     is_fallback = price is None
     if price is None:
-        price = _PRICE_PER_MTOK["gpt-4o"]
+        # Conservative fallback: pick the most expensive known model under
+        # our token-mix assumptions so unknown models are over-estimated
+        # rather than under-estimated, matching the docstring contract.
+        price = max(
+            _PRICE_PER_MTOK.values(),
+            key=lambda p: (_AVG_INPUT_TOKENS * p[0]) + (_AVG_OUTPUT_TOKENS * p[1]),
+        )
 
     in_price, out_price = price
     total_input_tokens = judge_calls * _AVG_INPUT_TOKENS
@@ -96,7 +107,7 @@ def estimate_audit(
     return AuditEstimate(
         judge_calls=judge_calls,
         judge_model=judge_model,
-        cost_usd=round(cost_usd, 2),
+        cost_usd=cost_usd,
         minutes_low=round(minutes_low, 1),
         minutes_high=round(minutes_high, 1),
         is_fallback_pricing=is_fallback,

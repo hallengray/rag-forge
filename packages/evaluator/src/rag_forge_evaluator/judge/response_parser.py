@@ -17,7 +17,8 @@ from dataclasses import dataclass
 from typing import Any
 
 _CODE_FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
-_FIRST_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
+_OBJECT_START = re.compile(r"\{")
+_DECODER = json.JSONDecoder()
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,8 @@ def parse_judge_json(raw: str) -> ParseOutcome:
     """Parse a judge response that should contain a JSON object.
 
     Tolerates: empty strings, leading prose, trailing prose, code fences
-    (with or without a language tag), and whitespace.
+    (with or without a language tag), nested objects, and multi-object
+    responses where the first object is the one we want.
 
     Returns ``skipped=True`` for any unrecoverable outcome so callers can
     exclude the sample from aggregation rather than scoring it as zero.
@@ -65,22 +67,29 @@ def parse_judge_json(raw: str) -> ParseOutcome:
     except json.JSONDecodeError:
         pass
 
-    # 3. Fall back to extracting the first {...} block from prose.
-    #    Greedy match is intentional - judges often emit nested JSON
-    #    and we want to capture the outermost balanced object.
-    match = _FIRST_OBJECT.search(text)
-    if match:
+    # 3. Fall back to scanning for the first decodable JSON object using
+    #    JSONDecoder.raw_decode, which correctly handles nested braces and
+    #    multi-object responses. The previous regex-based approach
+    #    (`r"\{.*\}"`) was greedy and would span from the first `{` to the
+    #    last `}`, breaking on inputs like `prefix {"a":1} suffix {"b":2}`.
+    saw_object_start = False
+    for match in _OBJECT_START.finditer(text):
+        saw_object_start = True
+        candidate = text[match.start():]
         try:
-            obj = json.loads(match.group(0))
-            if isinstance(obj, dict):
-                return ParseOutcome(ok=True, data=obj, error=None, skipped=False)
-        except json.JSONDecodeError as e:
-            return ParseOutcome(
-                ok=False,
-                data=None,
-                error=f"extracted object failed to parse: {e}",
-                skipped=True,
-            )
+            obj, _ = _DECODER.raw_decode(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return ParseOutcome(ok=True, data=obj, error=None, skipped=False)
+
+    if saw_object_start:
+        return ParseOutcome(
+            ok=False,
+            data=None,
+            error="found '{' but no decodable JSON object (likely truncated)",
+            skipped=True,
+        )
 
     return ParseOutcome(
         ok=False,

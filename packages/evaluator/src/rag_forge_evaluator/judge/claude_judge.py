@@ -31,6 +31,14 @@ def _resolve_int(env_var: str, default: int) -> int:
         return default
 
 
+def _validate_positive_int(name: str, value: int) -> int:
+    """Reject zero/negative values before they hit the SDK."""
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        msg = f"{name} must be a positive integer, got {value!r}"
+        raise ValueError(msg)
+    return value
+
+
 class ClaudeJudge:
     def __init__(
         self,
@@ -47,15 +55,17 @@ class ClaudeJudge:
             )
             raise ValueError(msg)
         resolved_model = model or os.environ.get("RAG_FORGE_JUDGE_MODEL") or _DEFAULT_MODEL
-        resolved_max_tokens = (
+        resolved_max_tokens = _validate_positive_int(
+            "max_tokens",
             max_tokens
             if max_tokens is not None
-            else _resolve_int("RAG_FORGE_JUDGE_MAX_TOKENS", _DEFAULT_MAX_TOKENS)
+            else _resolve_int("RAG_FORGE_JUDGE_MAX_TOKENS", _DEFAULT_MAX_TOKENS),
         )
-        resolved_max_retries = (
+        resolved_max_retries = _validate_positive_int(
+            "max_retries",
             max_retries
             if max_retries is not None
-            else _resolve_int("RAG_FORGE_JUDGE_MAX_RETRIES", _DEFAULT_MAX_RETRIES)
+            else _resolve_int("RAG_FORGE_JUDGE_MAX_RETRIES", _DEFAULT_MAX_RETRIES),
         )
         self._client = Anthropic(api_key=key, max_retries=resolved_max_retries)
         self._model = resolved_model

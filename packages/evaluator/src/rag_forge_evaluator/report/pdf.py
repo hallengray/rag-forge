@@ -6,11 +6,15 @@ from pathlib import Path
 def is_available() -> tuple[bool, str | None]:
     """Return (ok, error_message) for whether PDF generation can run.
 
-    Checks both that the playwright package is importable and that the
-    Chromium browser binary has been downloaded via
-    ``playwright install chromium``. Used by AuditOrchestrator to fail
-    fast before judge calls run, instead of crashing at the very end of
-    a paid audit.
+    Checks BOTH that the playwright package is importable AND that
+    Chromium can actually launch. ``executable_path`` is unreliable as
+    a preflight signal: it returns the *expected* path even when the
+    binary isn't installed, especially for headless-only installations
+    (per Playwright issue #39327). The only reliable check is to
+    attempt a launch and immediately close.
+
+    Used by AuditOrchestrator to fail fast before judge calls run,
+    instead of crashing at the very end of a paid audit.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -21,14 +25,18 @@ def is_available() -> tuple[bool, str | None]:
             "&& playwright install chromium",
         )
     try:
-        from playwright.sync_api import sync_playwright
-
         with sync_playwright() as p:
-            exe_path = p.chromium.executable_path
-            if not exe_path:
-                return (False, "Chromium binary not found. Run: playwright install chromium")
+            browser = p.chromium.launch(headless=True)
+            browser.close()
     except Exception as e:
-        return (False, f"Playwright chromium not available: {e}")
+        # Playwright raises a clear "Executable doesn't exist at <path>"
+        # error when chromium isn't installed; surface that verbatim plus
+        # the install hint so users see both diagnosis and fix.
+        return (
+            False,
+            f"Chromium failed to launch: {e}. "
+            "Run: playwright install chromium",
+        )
     return (True, None)
 
 

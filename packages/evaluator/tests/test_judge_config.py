@@ -117,3 +117,31 @@ def test_claude_judge_constructor_model_wins_over_env(monkeypatch: pytest.Monkey
     monkeypatch.setenv("RAG_FORGE_JUDGE_MODEL", "claude-haiku-4-5")
     judge = ClaudeJudge(api_key="test-key", model="claude-opus-4-6")
     assert judge.model_name() == "claude-opus-4-6"
+
+
+# ---------- validation ----------
+
+
+def test_claude_judge_rejects_zero_max_tokens() -> None:
+    with pytest.raises(ValueError, match="max_tokens"):
+        ClaudeJudge(api_key="test-key", max_tokens=0)
+
+
+def test_claude_judge_rejects_negative_max_tokens() -> None:
+    with pytest.raises(ValueError, match="max_tokens"):
+        ClaudeJudge(api_key="test-key", max_tokens=-1)
+
+
+def test_claude_judge_rejects_zero_max_retries() -> None:
+    with pytest.raises(ValueError, match="max_retries"):
+        ClaudeJudge(api_key="test-key", max_retries=0)
+
+
+def test_openai_judge_rejects_zero_max_tokens() -> None:
+    with pytest.raises(ValueError, match="max_tokens"):
+        OpenAIJudge(api_key="test-key", max_tokens=0)
+
+
+def test_openai_judge_rejects_negative_max_retries() -> None:
+    with pytest.raises(ValueError, match="max_retries"):
+        OpenAIJudge(api_key="test-key", max_retries=-1)

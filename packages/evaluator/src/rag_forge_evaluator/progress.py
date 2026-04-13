@@ -13,8 +13,15 @@ Design notes:
   a sample is "scored" after all metrics have run against it.
 - The ``NullProgressReporter`` is the default so existing callers (and the
   test suite) do not need to pass one explicitly.
+- **Query content is redacted by default** in streamed progress lines.
+  ``stderr`` is commonly captured by CI systems, terminal recorders, and
+  log collectors, so streaming raw queries could leak PHI/PII for
+  clinical, legal, or financial RAG pipelines. Set
+  ``RAG_FORGE_LOG_QUERIES=1`` in the environment to opt into showing
+  query previews in progress output.
 """
 
+import os
 import sys
 from typing import Protocol, TextIO, runtime_checkable
 
@@ -133,9 +140,15 @@ class StderrProgressReporter:
             f"{_short_name(name)}={score:.2f}" for name, score in metrics.items()
         )
         status = "OK" if skipped_count == 0 else f"WARN {skipped_count} skipped"
-        preview = query_preview[:40].replace("\n", " ")
-        if len(query_preview) > 40:
-            preview = preview[:37] + "..."
+        # Redact query content by default to avoid leaking PHI/PII into
+        # CI logs, terminal recorders, or log collectors. Opt in with
+        # RAG_FORGE_LOG_QUERIES=1 for local debugging.
+        if os.environ.get("RAG_FORGE_LOG_QUERIES") == "1":
+            preview = query_preview[:40].replace("\n", " ")
+            if len(query_preview) > 40:
+                preview = preview[:37] + "..."
+        else:
+            preview = "[query redacted]"
         line = (
             f"[{index:>{width}}/{total}] {preview:<40}  "
             f"{scores_part}  {status}  ({elapsed_seconds:.1f}s)"
@@ -158,7 +171,7 @@ class StderrProgressReporter:
         self._write(f"Audit complete in {minutes}m {seconds}s")
         self._write(
             f"Scored: {scored_count} metric evaluations    "
-            f"Skipped: {skipped_count} (parse failures — see report for details)"
+            f"Skipped: {skipped_count} (invalid or incomplete judge outputs — see report for details)"
         )
         self._write(f"Overall: {overall_score:.4f}    RMM Level: {rmm_level}")
         if report_path:

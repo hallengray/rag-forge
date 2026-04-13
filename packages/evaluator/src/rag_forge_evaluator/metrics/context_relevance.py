@@ -1,9 +1,9 @@
 """Context relevance metric: are the retrieved chunks relevant to the query?"""
-import json
 import logging
 
 from rag_forge_evaluator.engine import EvaluationSample, MetricResult
 from rag_forge_evaluator.judge.base import JudgeProvider
+from rag_forge_evaluator.judge.response_parser import parse_judge_json
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +31,39 @@ class ContextRelevanceMetric:
             f"[Chunk {i}]: {ctx}" for i, ctx in enumerate(sample.contexts)
         )
         user_prompt = f"Query: {sample.query}\n\nContext chunks:\n{chunks_text}"
-        try:
-            raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
-            data = json.loads(raw)
-            score = float(data.get("mean_score", 0.0))
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning("Context relevance eval failed: %s", e)
+        raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
+        outcome = parse_judge_json(raw)
+        if not outcome.ok or outcome.data is None:
+            logger.warning("Context relevance parse failed: %s", outcome.error)
             return MetricResult(
                 name="context_relevance",
                 score=0.0,
                 threshold=self.default_threshold(),
                 passed=False,
-                details=f"Judge returned invalid response: {e}",
+                details=f"judge response unparseable: {outcome.error}",
+                skipped=True,
+            )
+        if "mean_score" not in outcome.data:
+            logger.warning("Context relevance: judge response missing 'mean_score' field")
+            return MetricResult(
+                name="context_relevance",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details="judge response missing 'mean_score' field",
+                skipped=True,
+            )
+        try:
+            score = float(outcome.data["mean_score"])
+        except (TypeError, ValueError) as e:
+            logger.warning("Context relevance: 'mean_score' is not a number: %s", e)
+            return MetricResult(
+                name="context_relevance",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details=f"'mean_score' not numeric: {e}",
+                skipped=True,
             )
         return MetricResult(
             name="context_relevance",

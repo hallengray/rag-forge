@@ -1,29 +1,34 @@
-export const CONTENT_LAST_VERIFIED = "2026-04-12";
+export const CONTENT_LAST_VERIFIED = "2026-04-13";
 
 export const SITE = {
   name: "RAG-Forge",
   url: "https://rag-forge.vercel.app",
   github: "https://github.com/hallengray/rag-forge",
-  npm: "https://www.npmjs.com/package/rag-forge",
+  npm: "https://www.npmjs.com/package/@rag-forge/cli",
   pypi: "https://pypi.org/project/rag-forge-core",
   docs: "https://github.com/hallengray/rag-forge#readme",
   contributing:
     "https://github.com/hallengray/rag-forge/blob/main/CONTRIBUTING.md",
+  releaseNotes:
+    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.1.md",
   author: "Femi Adedayo",
 } as const;
 
+// Launch-phase trust signals. Avoid synthetic download counts on a
+// brand-new package — real numbers go here once they're real.
 export const TRUST = {
-  githubStars: "120",
-  npmDownloads: "1.2k",
-  pypiDownloads: "850",
-  contributors: "8",
+  status: "v0.1.1 just shipped",
+  license: "MIT",
+  publishedVia: "OIDC Trusted Publishers",
+  earlyAdopter: "Be one of the first 100",
 } as const;
 
 export const HERO = {
-  headline: "Production-grade RAG pipelines with evaluation baked in.",
+  headline: "Catch RAG failures before your users do.",
   subheadline:
-    "RAG-Forge bridges the gap between building RAG pipelines and knowing whether they actually work. Scaffold, evaluate, and assess any pipeline against the RAG Maturity Model.",
+    "RAG-Forge audits any RAG pipeline against the RAG Maturity Model. Detect hallucinations, retrieval bypass, silent quality regressions, and cost drift before they ship — with a single CLI that works on your existing stack.",
   installCommand: "npm install -g @rag-forge/cli",
+  versionBadge: "v0.1.1 — Post-audit hardening release",
 } as const;
 
 export type Citation = {
@@ -40,26 +45,30 @@ export type ProblemStat = {
 
 export const PROBLEMS: readonly ProblemStat[] = [
   {
-    stat: "73%",
-    label: "of enterprise RAG systems are over budget",
-    source: "Industry analysis, 2026",
-    // TODO: add source
-    citation: null,
-  },
-  {
-    stat: "40%",
-    label: "of RAG deployments lack systematic evaluation",
-    source: "Industry surveys, early 2026",
-    // TODO: add source
-    citation: null,
-  },
-  {
     stat: "32%",
-    label: "cite quality as the #1 deployment barrier",
+    label: "of teams cite quality as the #1 GenAI deployment barrier",
     source: "LangChain State of AI Agents 2026",
     citation: {
       url: "https://www.langchain.com/stateofaiagents",
-      retrieved: "2026-04-12",
+      retrieved: "2026-04-13",
+    },
+  },
+  {
+    stat: "RMM-0",
+    label: "is where most production RAG pipelines actually sit — naive vector search with no quality framework",
+    source: "RAG-Forge Maturity Model",
+    citation: {
+      url: "https://github.com/hallengray/rag-forge#rag-maturity-model",
+      retrieved: "2026-04-13",
+    },
+  },
+  {
+    stat: "0",
+    label: "open-source frameworks let you score any pipeline against a maturity model with framework-agnostic CLI tooling — until now",
+    source: "RAG-Forge",
+    citation: {
+      url: "https://github.com/hallengray/rag-forge",
+      retrieved: "2026-04-13",
     },
   },
 ];
@@ -74,8 +83,8 @@ export const PILLARS = [
   {
     title: "Evaluation as a CI/CD Gate",
     description:
-      "RAGAS, DeepEval, and LLM-as-Judge baked in. Block PRs when faithfulness drops below threshold.",
-    snippet: "rag-forge audit --golden-set qa.json --threshold 0.85",
+      "RAGAS, DeepEval, and LLM-as-Judge baked in. Cost + time estimates before each run, skip-aware aggregation, configurable thresholds in rag-forge.config.ts.",
+    snippet: "rag-forge audit --golden-set qa.json --judge claude",
   },
   {
     title: "Built-in Observability",
@@ -161,17 +170,35 @@ export const COMPARISON_LAST_VERIFIED = "2026-04";
 export const COMPARISON_CITATIONS: Readonly<Record<string, Citation>> = {
   langchain: {
     url: "https://python.langchain.com/docs/introduction/",
-    retrieved: "2026-04-12",
+    retrieved: "2026-04-13",
   },
   llamaindex: {
     url: "https://docs.llamaindex.ai/en/stable/",
-    retrieved: "2026-04-12",
+    retrieved: "2026-04-13",
   },
   ragas: {
     url: "https://docs.ragas.io/en/stable/",
-    retrieved: "2026-04-12",
+    retrieved: "2026-04-13",
   },
 };
+
+// What's new in v0.1.1 — surfaced on the landing page so visitors who
+// hit the site after the launch announcement land on something concrete.
+export const WHATS_NEW = {
+  version: "v0.1.1",
+  tagline: "Post-audit hardening release",
+  date: "2026-04-13",
+  highlights: [
+    "Pre-run cost + time estimates so you know what an audit costs before you pay for it",
+    "Configurable judge model — pick Claude Opus, GPT-4 Turbo, or any other supported model via --judge-model",
+    "Skip-aware aggregation: parse failures and incomplete judge outputs no longer silently zero your scores",
+    "PHI/PII redaction by default in progress streams (set RAG_FORGE_LOG_QUERIES=1 to opt in)",
+    "Honest about what RAGAS does and doesn't honor — fail-loud guards on unsupported judge/evaluator combinations",
+    "12 bugs fixed end-to-end after a real production audit run",
+  ],
+  releaseNotesUrl:
+    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.1.md",
+} as const;
 
 export const COMPARISON = {
   rows: [

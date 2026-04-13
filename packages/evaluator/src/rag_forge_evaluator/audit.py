@@ -1,11 +1,13 @@
 """Audit orchestrator: coordinates evaluation, history, and report generation."""
 
+import time
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from rag_forge_evaluator.cost_estimates import estimate_audit
 from rag_forge_evaluator.engine import EvaluationResult
 from rag_forge_evaluator.engines import create_evaluator
 from rag_forge_evaluator.history import AuditHistory, AuditHistoryEntry
@@ -13,7 +15,12 @@ from rag_forge_evaluator.input_loader import InputLoader
 from rag_forge_evaluator.judge.base import JudgeProvider
 from rag_forge_evaluator.judge.mock_judge import MockJudge
 from rag_forge_evaluator.maturity import RMMLevel, RMMScorer
+from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter, confirm_or_exit
 from rag_forge_evaluator.report.generator import ReportGenerator
+
+
+class ConfigurationError(ValueError):
+    """Raised when an AuditConfig combination is invalid or unsafe to run."""
 
 
 @dataclass
@@ -23,11 +30,14 @@ class AuditConfig:
     input_path: Path | None = None
     golden_set_path: Path | None = None
     judge_model: str | None = None
+    judge_model_name: str | None = None  # specific model id passed to the provider
     output_dir: Path = Path("./reports")
     generate_pdf: bool = False
     thresholds: dict[str, float] | None = None
     evaluator_engine: str = "llm-judge"
     tracer: Any = None  # opentelemetry.trace.Tracer or None
+    progress: ProgressReporter | None = None
+    assume_yes: bool = False
 
 
 @dataclass
@@ -42,25 +52,78 @@ class AuditReport:
     pdf_report_path: Path | None = None
 
 
-def _create_judge(model: str | None) -> JudgeProvider:
-    """Create a judge provider based on model name."""
+_KNOWN_JUDGE_ALIASES = ("mock", "claude", "claude-sonnet", "openai", "gpt-4o")
+
+
+def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProvider:
+    """Create a judge provider based on provider alias and optional model id.
+
+    Args:
+        model: Provider alias - "mock", "claude", "claude-sonnet", "openai",
+            "gpt-4o". Determines which judge class to instantiate. Unknown
+            aliases raise ConfigurationError so typos like "claud" fail
+            loudly instead of silently downgrading to a free mock run.
+        model_name: Specific model identifier passed through to the judge
+            constructor (e.g. "claude-opus-4-6", "gpt-4-turbo"). When None,
+            the judge falls back to its env-var/default model.
+    """
     if model == "mock" or model is None:
         return MockJudge()
     if model in ("claude", "claude-sonnet"):
         from rag_forge_evaluator.judge.claude_judge import ClaudeJudge
-        return ClaudeJudge()
+        return ClaudeJudge(model=model_name)
     if model in ("openai", "gpt-4o"):
         from rag_forge_evaluator.judge.openai_judge import OpenAIJudge
-        return OpenAIJudge()
-    return MockJudge()
+        return OpenAIJudge(model=model_name)
+    msg = (
+        f"Unknown judge provider {model!r}. Expected one of: "
+        f"{', '.join(repr(a) for a in _KNOWN_JUDGE_ALIASES)}. "
+        "Did you mean 'claude' or 'openai'?"
+    )
+    raise ConfigurationError(msg)
 
 
 class AuditOrchestrator:
     """Orchestrates the full audit pipeline."""
 
     def __init__(self, config: AuditConfig) -> None:
+        self._validate_config(config)
         self.config = config
         self._tracer = config.tracer
+        self._progress: ProgressReporter = config.progress or NullProgressReporter()
+
+    @staticmethod
+    def _validate_config(config: AuditConfig) -> None:
+        """Reject unsafe combinations before any judge calls happen.
+
+        Currently guards against ``--evaluator ragas --judge claude`` (or any
+        non-OpenAI/non-mock judge), because the RAGAS engine uses its own
+        internal OpenAI-backed judge regardless of the top-level ``--judge``
+        flag. Letting the run start would silently use a different model than
+        the user requested and would fail with an opaque auth error on
+        customers who don't have an OPENAI_API_KEY.
+
+        Full claude-judge propagation through RAGAS is tracked for v0.1.2 via
+        a LangchainLLMWrapper around ClaudeJudge.
+        """
+        if config.evaluator_engine == "ragas":
+            judge = config.judge_model
+            # Mock is *not* allowed here even though it costs $0: the ragas
+            # engine internally calls OpenAI regardless of --judge, so a mock
+            # config would skip the cost gate and confirmation prompt while
+            # still spending real OpenAI tokens. Fail loudly instead.
+            if judge not in ("openai", "gpt-4o"):
+                msg = (
+                    f"--evaluator ragas does not honor --judge {judge!r}. "
+                    "The RAGAS engine uses its own OpenAI-backed judge internally, "
+                    "so the requested judge would be silently ignored AND would "
+                    "still spend real OpenAI tokens (skipping the cost gate). "
+                    "Either:\n"
+                    "  1. Use --evaluator llm-judge (which honors --judge), or\n"
+                    "  2. Set OPENAI_API_KEY and pass --judge openai.\n"
+                    "Full claude-judge propagation through RAGAS is tracked for v0.1.2."
+                )
+                raise ConfigurationError(msg)
 
     def _span(self, name: str) -> Any:
         """Return an active span context manager, or a no-op if no tracer is configured."""
@@ -70,6 +133,19 @@ class AuditOrchestrator:
 
     def run(self) -> AuditReport:
         """Execute the full audit pipeline."""
+        # 0. Fail fast on missing optional deps before any judge calls run.
+        if self.config.generate_pdf:
+            from rag_forge_evaluator.report.pdf import is_available
+
+            ok, error = is_available()
+            if not ok:
+                msg = (
+                    f"--pdf was requested but PDF generation is unavailable: {error}. "
+                    f"Re-run without --pdf or install the [pdf] extra before starting "
+                    f"the audit (judge calls are expensive)."
+                )
+                raise ConfigurationError(msg)
+
         with self._span("rag-forge.audit"):
             # 1. Load input
             with self._span("rag-forge.load_input") as span:
@@ -87,14 +163,48 @@ class AuditOrchestrator:
                     span.set_attribute("source_type", source_type)
 
             # 2. Create evaluator via factory
-            judge = _create_judge(self.config.judge_model)
+            judge = _create_judge(self.config.judge_model, self.config.judge_model_name)
             evaluator = create_evaluator(
                 self.config.evaluator_engine,
                 judge=judge,
                 thresholds=self.config.thresholds,
+                progress=self._progress,
             )
 
+            # 2a. Print banner + confirm (no-op for NullProgressReporter + assume_yes).
+            metric_names = evaluator.supported_metrics()
+            # The RAGAS engine ignores the configured judge entirely and uses
+            # its own internal gpt-4o-mini regardless of --judge / --judge-model.
+            # Use the actual model the evaluator will invoke for the estimate
+            # so the banner is honest about cost. The validator in
+            # _validate_config has already restricted ragas to --judge openai,
+            # so we only have to handle that one engine specially here.
+            if self.config.evaluator_engine == "ragas":
+                estimate_model = "gpt-4o-mini"
+                banner_judge_model = "gpt-4o-mini (RAGAS internal — judge override ignored)"
+            else:
+                estimate_model = judge.model_name()
+                banner_judge_model = judge.model_name()
+            estimate = estimate_audit(
+                sample_count=len(samples),
+                metric_count=len(metric_names),
+                judge_model=estimate_model,
+            )
+            self._progress.audit_started(
+                sample_count=len(samples),
+                metric_names=metric_names,
+                judge_model=banner_judge_model,
+                evaluator_engine=self.config.evaluator_engine,
+                estimate=estimate,
+            )
+            # Only prompt when the run will actually spend money. Mock and
+            # local/free judges have cost_usd == 0.0 and should proceed silently
+            # so existing test suites and CI runs are unaffected.
+            if estimate.cost_usd > 0:
+                confirm_or_exit(assume_yes=self.config.assume_yes)
+
             # 3. Run evaluation
+            audit_start = time.monotonic()
             with self._span("rag-forge.evaluate") as span:
                 evaluation = evaluator.evaluate(samples)
                 if span is not None:
@@ -142,6 +252,18 @@ class AuditOrchestrator:
                 overall_score=evaluation.overall_score,
                 passed=evaluation.passed,
             ))
+
+            # 9. Emit completion event.
+            metric_count = len(evaluation.metrics)
+            total_evaluations = evaluation.samples_evaluated * metric_count
+            self._progress.audit_completed(
+                elapsed_seconds=time.monotonic() - audit_start,
+                scored_count=max(total_evaluations - evaluation.skipped_evaluations, 0),
+                skipped_count=evaluation.skipped_evaluations,
+                overall_score=evaluation.overall_score,
+                rmm_level=int(rmm_level),
+                report_path=str(report_path),
+            )
 
             return AuditReport(
                 evaluation=evaluation,

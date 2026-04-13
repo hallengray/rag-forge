@@ -5,12 +5,22 @@ Outputs JSON to stdout for the TypeScript CLI to parse.
 """
 
 import argparse
+import contextlib
 import json
 import sys
 from pathlib import Path
 
 from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator
+from rag_forge_evaluator.progress import StderrProgressReporter
 from rag_forge_observability.tracing import TracingManager
+
+# Ensure line-buffered output when invoked as a subprocess on Windows.
+# Without this, a long-running audit looks completely frozen until exit
+# because Python block-buffers stdout when it is not connected to a TTY.
+with contextlib.suppress(AttributeError, OSError):
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+with contextlib.suppress(AttributeError, OSError):
+    sys.stderr.reconfigure(line_buffering=True)  # type: ignore[union-attr]
 
 
 def cmd_audit(args: argparse.Namespace) -> None:
@@ -25,11 +35,14 @@ def cmd_audit(args: argparse.Namespace) -> None:
         input_path=Path(args.input) if args.input else None,
         golden_set_path=Path(args.golden_set) if args.golden_set else None,
         judge_model=args.judge or config_data.get("judge_model", "mock"),
+        judge_model_name=args.judge_model or config_data.get("judge_model_name"),
         output_dir=Path(args.output),
         generate_pdf=args.pdf,
         thresholds=config_data.get("thresholds"),
         evaluator_engine=args.evaluator,
         tracer=tracer,
+        progress=StderrProgressReporter(),
+        assume_yes=args.yes,
     )
 
     report = AuditOrchestrator(config).run()
@@ -212,7 +225,15 @@ def main() -> None:
     audit_parser = subparsers.add_parser("audit", help="Run evaluation audit")
     audit_parser.add_argument("--input", help="Path to telemetry JSONL file")
     audit_parser.add_argument("--golden-set", help="Path to golden set JSON file")
-    audit_parser.add_argument("--judge", help="Judge model: mock | claude | openai")
+    audit_parser.add_argument("--judge", help="Judge provider alias: mock | claude | openai")
+    audit_parser.add_argument(
+        "--judge-model",
+        help=(
+            "Specific judge model id passed through to the provider "
+            "(e.g. 'claude-opus-4-6', 'gpt-4-turbo'). "
+            "Falls back to RAG_FORGE_JUDGE_MODEL env var, then the provider default."
+        ),
+    )
     audit_parser.add_argument("--output", default="./reports", help="Output directory")
     audit_parser.add_argument("--config-json", help="JSON config from TS CLI")
     audit_parser.add_argument(
@@ -221,6 +242,10 @@ def main() -> None:
         help="Evaluator engine: llm-judge | ragas | deepeval",
     )
     audit_parser.add_argument("--pdf", action="store_true", help="Generate PDF report")
+    audit_parser.add_argument(
+        "--yes", "-y", action="store_true",
+        help="Skip the pre-run confirmation prompt. Required for non-interactive runs.",
+    )
 
     cost_parser = subparsers.add_parser("cost", help="Estimate pipeline costs")
     cost_parser.add_argument("--telemetry", required=True, help="Path to telemetry JSON")

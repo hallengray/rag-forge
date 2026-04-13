@@ -1,6 +1,6 @@
 [project]
 name = "rag-forge-evaluator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Evaluation engine: RAGAS, DeepEval, LLM-as-Judge, and audit report generation"
 requires-python = ">=3.11"
 license = "MIT"
@@ -21,6 +21,7 @@ dependencies = [
     "jinja2>=3.1",
     "anthropic>=0.30",
     "openai>=1.30",
+    "rag-forge-observability>=0.1.1",
 ]
 
 [project.urls]
@@ -30,9 +31,12 @@ Issues = "https://github.com/hallengray/rag-forge/issues"
 Documentation = "https://github.com/hallengray/rag-forge#readme"
 
 [project.optional-dependencies]
-ragas = ["ragas>=0.2"]
+ragas = ["ragas>=0.2.10,<0.3"]
 deepeval = ["deepeval>=1.0"]
 pdf = ["playwright>=1.40"]
+
+[project.scripts]
+rag-forge-eval = "rag_forge_evaluator.cli:main"
 
 [build-system]
 requires = ["hatchling"]

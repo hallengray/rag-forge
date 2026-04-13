@@ -1,9 +1,9 @@
 """Faithfulness metric: is the response grounded in retrieved contexts?"""
-import json
 import logging
 
 from rag_forge_evaluator.engine import EvaluationSample, MetricResult
 from rag_forge_evaluator.judge.base import JudgeProvider
+from rag_forge_evaluator.judge.response_parser import parse_judge_json
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +33,39 @@ class FaithfulnessMetric:
             f"Context:\n{chr(10).join(sample.contexts)}\n\n"
             f"Response: {sample.response}"
         )
-        try:
-            raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
-            data = json.loads(raw)
-            score = float(data.get("score", 0.0))
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning("Faithfulness eval failed: %s", e)
+        raw = judge.judge(_SYSTEM_PROMPT, user_prompt)
+        outcome = parse_judge_json(raw)
+        if not outcome.ok or outcome.data is None:
+            logger.warning("Faithfulness parse failed: %s", outcome.error)
             return MetricResult(
                 name="faithfulness",
                 score=0.0,
                 threshold=self.default_threshold(),
                 passed=False,
-                details=f"Judge returned invalid response: {e}",
+                details=f"judge response unparseable: {outcome.error}",
+                skipped=True,
+            )
+        if "score" not in outcome.data:
+            logger.warning("Faithfulness: judge response missing 'score' field")
+            return MetricResult(
+                name="faithfulness",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details="judge response missing 'score' field",
+                skipped=True,
+            )
+        try:
+            score = float(outcome.data["score"])
+        except (TypeError, ValueError) as e:
+            logger.warning("Faithfulness: 'score' is not a number: %s", e)
+            return MetricResult(
+                name="faithfulness",
+                score=0.0,
+                threshold=self.default_threshold(),
+                passed=False,
+                details=f"'score' not numeric: {e}",
+                skipped=True,
             )
         return MetricResult(
             name="faithfulness",

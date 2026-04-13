@@ -1,6 +1,6 @@
 {
   "name": "@rag-forge/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server exposing RAG-Forge pipeline operations as agent-callable tools",
   "author": "Femi Adedayo",
   "repository": {
@@ -27,7 +27,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

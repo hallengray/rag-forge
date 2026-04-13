@@ -18,9 +18,9 @@ rag-forge audit [--input <file>] [--golden-set <file>] [options]
 
 The command delegates to the Python `rag_forge_evaluator.cli` module. It scores each sample across a set of metrics (faithfulness, relevance, answer completeness, and others depending on the evaluator engine) and maps the overall score to an RMM level (0–5). The RMM — RAG Maturity Model — gives you a single headline grade that indicates where your pipeline sits on the quality spectrum.
 
-Three evaluator engines are supported: `llm-judge` (default, uses a language model to score each metric), `ragas` (open-source evaluation framework), and `deepeval` (another evaluation framework). The `--judge` flag selects which model powers the `llm-judge` engine.
+Three evaluator engines are supported: `llm-judge` (default, uses a language model to score each metric), `ragas` (open-source evaluation framework, internally uses gpt-4o-mini regardless of `--judge`), and `deepeval` (another evaluation framework). The `--judge` flag selects the provider powering `llm-judge`; `--judge-model` lets you pin a specific model id for that provider.
 
-On completion, `audit` saves an HTML report and a JSON report to the output directory. Pass `--pdf` to also render a PDF (requires Playwright to be installed).
+On completion, `audit` saves an HTML report and a JSON report to the output directory. Pass `--pdf` to also render a PDF — Playwright availability is checked at audit start, not at the end, so missing dependencies fail fast before judge calls run.
 
 The golden set file for a scaffolded project lives at `eval/golden_set.json`.
 
@@ -30,10 +30,26 @@ The golden set file for a scaffolded project lives at `eval/golden_set.json`.
 |------|---------|-------------|
 | `-i, --input <file>` | — | Path to telemetry JSONL file. Either `--input` or `--golden-set` is required. |
 | `-g, --golden-set <file>` | — | Path to golden set JSON file. Either `--input` or `--golden-set` is required. |
-| `-j, --judge <model>` | `mock` | Judge model for `llm-judge` engine: `mock` \| `claude` \| `openai` |
+| `-j, --judge <model>` | `mock` | Judge provider for `llm-judge` engine: `mock` \| `claude` \| `openai`. Unknown aliases fail loudly with a `ConfigurationError`. |
+| `--judge-model <name>` | provider default | Specific judge model id (e.g. `claude-opus-4-6`, `gpt-4-turbo`). Falls back to `RAG_FORGE_JUDGE_MODEL` env var, then the provider default. |
 | `-o, --output <dir>` | `./reports` | Output directory for reports |
-| `--evaluator <engine>` | `llm-judge` | Evaluator engine: `llm-judge` \| `ragas` \| `deepeval` |
-| `--pdf` | — | Generate PDF report (requires Playwright) |
+| `--evaluator <engine>` | `llm-judge` | Evaluator engine: `llm-judge` \| `ragas` \| `deepeval`. Note: `--evaluator ragas` requires `--judge openai` since RAGAS uses its own internal OpenAI judge regardless. |
+| `--pdf` | — | Generate PDF report (requires Playwright). Checked at audit start. |
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RAG_FORGE_JUDGE_MODEL` | provider default | Override the judge model id. Lower precedence than `--judge-model`. |
+| `RAG_FORGE_JUDGE_MAX_TOKENS` | `4096` | Max output tokens per judge call. Bumped from `1024` in v0.1.1 — the old default truncated mid-array on long structured responses. |
+| `RAG_FORGE_JUDGE_MAX_RETRIES` | `5` | Max retries on transient `429`/`5xx` from the judge SDK. |
+| `RAG_FORGE_LOG_QUERIES` | unset | Set to `1` to show query previews in the per-sample progress stream. Default is to redact query content (PHI/PII protection). |
+
+## Pre-run banner and confirmation
+
+Starting in v0.1.1, `audit` prints a pre-run banner to stderr showing sample count, judge model, evaluator engine, total judge calls, estimated time, and estimated USD cost — and asks for confirmation before any judge calls are made. The npm CLI auto-confirms (the TypeScript wrapper passes `--yes` to the Python subprocess). Direct `python -m rag_forge_evaluator.cli audit ...` invocations require either an interactive terminal or an explicit `--yes` flag.
+
+While the audit runs, a per-sample progress line streams to stderr with metric scores and elapsed time. On completion, a summary line shows total elapsed, scored count, skipped count, overall score, RMM level, and report path.
 
 ## Examples
 
@@ -49,10 +65,17 @@ rag-forge audit --golden-set eval/golden_set.json
 rag-forge audit --input ./telemetry/pipeline.jsonl --judge claude --output ./reports/prod
 ```
 
+### Pin a specific Claude model
+
+```bash
+rag-forge audit --input ./telemetry/pipeline.jsonl --judge claude --judge-model claude-opus-4-6
+```
+
 ### Use RAGAS as the evaluator engine
 
 ```bash
-rag-forge audit --golden-set eval/golden_set.json --evaluator ragas
+# Note: ragas requires --judge openai (or omit --judge entirely)
+rag-forge audit --golden-set eval/golden_set.json --evaluator ragas --judge openai
 ```
 
 ### Generate a PDF report

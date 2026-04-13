@@ -18,9 +18,15 @@ class TestCreateEvaluator:
         with pytest.raises(ValueError, match="Unknown evaluator engine"):
             create_evaluator("invalid")
 
-    def test_ragas_not_installed_raises(self) -> None:
+    def test_ragas_not_installed_raises_on_evaluate(self) -> None:
+        # The ragas import is deferred to evaluate() so the wrapper module
+        # (and its _extract_ragas_score helper) can be imported and unit-
+        # tested without the optional dep installed.
+        from rag_forge_evaluator.engine import EvaluationSample
+
+        evaluator = create_evaluator("ragas")
         with pytest.raises(ImportError):
-            create_evaluator("ragas")
+            evaluator.evaluate([EvaluationSample(query="q", contexts=["c"], response="r")])
 
     def test_deepeval_not_installed_raises(self) -> None:
         with pytest.raises(ImportError):

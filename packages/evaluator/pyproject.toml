@@ -30,7 +30,7 @@ Issues = "https://github.com/hallengray/rag-forge/issues"
 Documentation = "https://github.com/hallengray/rag-forge#readme"
 
 [project.optional-dependencies]
-ragas = ["ragas>=0.2"]
+ragas = ["ragas>=0.2.10,<0.3"]
 deepeval = ["deepeval>=1.0"]
 pdf = ["playwright>=1.40"]
 

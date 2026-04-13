@@ -43,7 +43,7 @@ Three additions/changes supersede parts of the original task list:
 
 ### Revised execution order
 
-```
+```text
 Task 0  — Progress reporter + banner + --yes           [NEW]
 Task 1  — Failing parser test (TDD red)
 Task 2  — Robust parser (TDD green)
@@ -225,7 +225,14 @@ from dataclasses import dataclass
 from typing import Any
 
 _CODE_FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
-_FIRST_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)
+# NOTE: The production implementation uses json.JSONDecoder.raw_decode
+# instead of a regex (CodeRabbit feedback on PR #21). The regex shown
+# here was the original sketch; the shipped code in
+# packages/evaluator/src/rag_forge_evaluator/judge/response_parser.py
+# scans for `{` matches and uses raw_decode to find the first valid
+# JSON object, which correctly handles nested braces and multi-object
+# responses.
+_OBJECT_START = re.compile(r"\{")
 
 
 @dataclass(frozen=True)

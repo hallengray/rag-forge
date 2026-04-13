@@ -8,17 +8,29 @@ Configuration precedence (highest wins):
 
 The 4096-token default replaces the previous 1024 after the 2026-04-13
 PearMedica audit, where the faithfulness metric truncated mid-array on
-long clinical responses and silently scored 0. The Anthropic SDK's
-built-in retry loop handles transient 429/5xx (including 529 Overloaded)
-when ``max_retries`` is set.
+long clinical responses and silently scored 0.
+
+The Anthropic SDK's built-in retry loop handles 408/429/500/502/503/504
+but does NOT cover 529 Overloaded — 529 is an Anthropic-specific status
+that propagates as ``OverloadedError`` and crashes long-running audits
+during capacity events. We layer an explicit retry wrapper on top that
+catches 529 with exponential backoff (2, 4, 8, 16, 32s), while still
+delegating all other retriable errors to the SDK.
 """
 import os
+import time
+from collections.abc import Callable
+from typing import TypeVar
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APIStatusError
 
 _DEFAULT_MODEL = "claude-sonnet-4-20250514"
 _DEFAULT_MAX_TOKENS = 4096
 _DEFAULT_MAX_RETRIES = 5
+_OVERLOADED_STATUS = 529
+_OVERLOADED_BACKOFF_BASE_SECONDS = 2.0
+
+T = TypeVar("T")
 
 
 def _resolve_int(env_var: str, default: int) -> int:
@@ -70,13 +82,28 @@ class ClaudeJudge:
         self._client = Anthropic(api_key=key, max_retries=resolved_max_retries)
         self._model = resolved_model
         self._max_tokens = resolved_max_tokens
+        self._max_retries = resolved_max_retries
+
+    def _call_with_overloaded_retry(self, fn: Callable[[], T]) -> T:
+        for attempt in range(self._max_retries + 1):
+            try:
+                return fn()
+            except APIStatusError as exc:
+                status = getattr(exc, "status_code", None)
+                if status != _OVERLOADED_STATUS or attempt == self._max_retries:
+                    raise
+                time.sleep(_OVERLOADED_BACKOFF_BASE_SECONDS * (2**attempt))
+        msg = "unreachable: retry loop exited without returning or raising"
+        raise RuntimeError(msg)
 
     def judge(self, system_prompt: str, user_prompt: str) -> str:
-        response = self._client.messages.create(
-            model=self._model,
-            max_tokens=self._max_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
+        response = self._call_with_overloaded_retry(
+            lambda: self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
         )
         block = response.content[0]
         return block.text if hasattr(block, "text") else str(block)

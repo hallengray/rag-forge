@@ -45,24 +45,64 @@ def test_ragas_with_claude_sonnet_alias_also_raises() -> None:
         AuditOrchestrator(config)
 
 
+
+
+def test_ragas_with_mock_judge_is_blocked() -> None:
+    """Mock is NOT allowed with ragas: ragas spends real OpenAI tokens
+    regardless of --judge, so a mock config would skip the cost gate
+    while still incurring real charges. Per CodeRabbit critical review.
+    """
+    config = AuditConfig(
+        input_path=Path("x.jsonl"),
+        judge_model="mock",
+        evaluator_engine="ragas",
+    )
+    with pytest.raises(ConfigurationError) as exc:
+        AuditOrchestrator(config)
+    assert "mock" in str(exc.value)
+    assert "openai" in str(exc.value).lower()
+
+
+def test_unknown_judge_alias_raises() -> None:
+    """Typos like '--judge claud' must fail loudly, not downgrade to mock."""
+    from rag_forge_evaluator.audit import _create_judge
+
+    with pytest.raises(ConfigurationError) as exc:
+        _create_judge("claud")
+    msg = str(exc.value)
+    assert "claud" in msg
+    assert "claude" in msg.lower()  # suggestion in error message
+
+
+def test_unknown_judge_alias_via_orchestrator_raises(tmp_path: Path) -> None:
+    """Same typo, but routed through the orchestrator (where users hit it)."""
+    jsonl = tmp_path / "in.jsonl"
+    jsonl.write_text(
+        '{"query": "q", "contexts": ["c"], "response": "r"}\n',
+        encoding="utf-8",
+    )
+    config = AuditConfig(
+        input_path=jsonl,
+        judge_model="claud",  # typo
+        evaluator_engine="llm-judge",
+        output_dir=tmp_path / "reports",
+    )
+    # Validation happens at __init__; _create_judge runs in run().
+    # The orchestrator constructs successfully (no ragas mismatch)
+    # but the run() call should hit the typo guard.
+    orchestrator = AuditOrchestrator(config)
+    with pytest.raises(ConfigurationError):
+        orchestrator.run()
+
+
 def test_ragas_with_openai_judge_is_allowed() -> None:
     config = AuditConfig(
         input_path=Path("x.jsonl"),
         judge_model="openai",
         evaluator_engine="ragas",
     )
-    # Should not raise during construction.
-    AuditOrchestrator(config)
-
-
-def test_ragas_with_mock_judge_is_allowed() -> None:
-    """Mock runs are free and explicitly for testing — never block them."""
-    config = AuditConfig(
-        input_path=Path("x.jsonl"),
-        judge_model="mock",
-        evaluator_engine="ragas",
-    )
-    AuditOrchestrator(config)
+    orchestrator = AuditOrchestrator(config)
+    assert orchestrator.config is config
 
 
 def test_llm_judge_with_claude_is_allowed() -> None:
@@ -72,7 +112,8 @@ def test_llm_judge_with_claude_is_allowed() -> None:
         judge_model="claude",
         evaluator_engine="llm-judge",
     )
-    AuditOrchestrator(config)
+    orchestrator = AuditOrchestrator(config)
+    assert orchestrator.config is config
 
 
 def test_llm_judge_with_openai_is_allowed() -> None:
@@ -81,4 +122,5 @@ def test_llm_judge_with_openai_is_allowed() -> None:
         judge_model="openai",
         evaluator_engine="llm-judge",
     )
-    AuditOrchestrator(config)
+    orchestrator = AuditOrchestrator(config)
+    assert orchestrator.config is config

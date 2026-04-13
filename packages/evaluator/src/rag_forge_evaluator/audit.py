@@ -52,12 +52,17 @@ class AuditReport:
     pdf_report_path: Path | None = None
 
 
+_KNOWN_JUDGE_ALIASES = ("mock", "claude", "claude-sonnet", "openai", "gpt-4o")
+
+
 def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProvider:
     """Create a judge provider based on provider alias and optional model id.
 
     Args:
         model: Provider alias - "mock", "claude", "claude-sonnet", "openai",
-            "gpt-4o". Determines which judge class to instantiate.
+            "gpt-4o". Determines which judge class to instantiate. Unknown
+            aliases raise ConfigurationError so typos like "claud" fail
+            loudly instead of silently downgrading to a free mock run.
         model_name: Specific model identifier passed through to the judge
             constructor (e.g. "claude-opus-4-6", "gpt-4-turbo"). When None,
             the judge falls back to its env-var/default model.
@@ -70,7 +75,12 @@ def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProv
     if model in ("openai", "gpt-4o"):
         from rag_forge_evaluator.judge.openai_judge import OpenAIJudge
         return OpenAIJudge(model=model_name)
-    return MockJudge()
+    msg = (
+        f"Unknown judge provider {model!r}. Expected one of: "
+        f"{', '.join(repr(a) for a in _KNOWN_JUDGE_ALIASES)}. "
+        "Did you mean 'claude' or 'openai'?"
+    )
+    raise ConfigurationError(msg)
 
 
 class AuditOrchestrator:
@@ -98,11 +108,16 @@ class AuditOrchestrator:
         """
         if config.evaluator_engine == "ragas":
             judge = config.judge_model
-            if judge is not None and judge not in ("openai", "gpt-4o", "mock"):
+            # Mock is *not* allowed here even though it costs $0: the ragas
+            # engine internally calls OpenAI regardless of --judge, so a mock
+            # config would skip the cost gate and confirmation prompt while
+            # still spending real OpenAI tokens. Fail loudly instead.
+            if judge not in ("openai", "gpt-4o"):
                 msg = (
                     f"--evaluator ragas does not honor --judge {judge!r}. "
                     "The RAGAS engine uses its own OpenAI-backed judge internally, "
-                    "so the requested judge model would be silently ignored. "
+                    "so the requested judge would be silently ignored AND would "
+                    "still spend real OpenAI tokens (skipping the cost gate). "
                     "Either:\n"
                     "  1. Use --evaluator llm-judge (which honors --judge), or\n"
                     "  2. Set OPENAI_API_KEY and pass --judge openai.\n"

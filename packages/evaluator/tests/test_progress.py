@@ -19,9 +19,9 @@ def test_estimate_known_model_uses_table_pricing() -> None:
     est = estimate_audit(sample_count=19, metric_count=4, judge_model="claude-sonnet-4-20250514")
     assert est.judge_calls == 76
     assert est.is_fallback_pricing is False
-    # 76 calls * (1500 in + 300 out) tokens = 114000 in + 22800 out
-    # At $3/MTok in + $15/MTok out: 0.342 + 0.342 = 0.684 → rounds to 0.68
-    assert est.cost_usd == pytest.approx(0.68, abs=0.01)
+    # 76 calls * (1500 in + 800 out) tokens = 114000 in + 60800 out
+    # At $3/MTok in + $15/MTok out: 0.342 + 0.912 = 1.254 → rounds to 1.25
+    assert est.cost_usd == pytest.approx(1.25, abs=0.02)
     assert est.minutes_low < est.minutes_high
     assert est.minutes_low > 0
 

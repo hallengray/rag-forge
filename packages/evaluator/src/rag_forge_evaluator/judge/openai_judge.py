@@ -1,15 +1,34 @@
-"""OpenAI judge provider via OpenAI SDK."""
+"""OpenAI judge provider via OpenAI SDK.
+
+Configuration precedence and defaults match ClaudeJudge — see that module
+for the rationale on the 4096-token default and 5-retry default.
+"""
 import os
 
 from openai import OpenAI
+
+_DEFAULT_MODEL = "gpt-4o"
+_DEFAULT_MAX_TOKENS = 4096
+_DEFAULT_MAX_RETRIES = 5
+
+
+def _resolve_int(env_var: str, default: int) -> int:
+    raw = os.environ.get(env_var)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
 
 
 class OpenAIJudge:
     def __init__(
         self,
-        model: str = "gpt-4o",
+        model: str | None = None,
         api_key: str | None = None,
-        max_tokens: int = 1024,
+        max_tokens: int | None = None,
+        max_retries: int | None = None,
     ) -> None:
         key = api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
@@ -18,9 +37,20 @@ class OpenAIJudge:
                 "variable or pass api_key to OpenAIJudge."
             )
             raise ValueError(msg)
-        self._client = OpenAI(api_key=key)
-        self._model = model
-        self._max_tokens = max_tokens
+        resolved_model = model or os.environ.get("RAG_FORGE_JUDGE_MODEL") or _DEFAULT_MODEL
+        resolved_max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else _resolve_int("RAG_FORGE_JUDGE_MAX_TOKENS", _DEFAULT_MAX_TOKENS)
+        )
+        resolved_max_retries = (
+            max_retries
+            if max_retries is not None
+            else _resolve_int("RAG_FORGE_JUDGE_MAX_RETRIES", _DEFAULT_MAX_RETRIES)
+        )
+        self._client = OpenAI(api_key=key, max_retries=resolved_max_retries)
+        self._model = resolved_model
+        self._max_tokens = resolved_max_tokens
 
     def judge(self, system_prompt: str, user_prompt: str) -> str:
         response = self._client.chat.completions.create(

@@ -35,9 +35,12 @@ _PRICE_PER_MTOK: dict[str, tuple[float, float]] = {
 
 # Rough per-call token assumptions for a judge evaluation.
 # Input  = system prompt + query + contexts + response (~1200-2000 tokens)
-# Output = structured JSON score + short reason (~200-400 tokens)
+# Output = structured JSON enumeration of every claim in the response
+#          (~400-1200 tokens for faithfulness/hallucination on long
+#          responses, ~50-100 for answer_relevance/context_relevance).
+#          800 is the weighted average across the four default metrics.
 _AVG_INPUT_TOKENS = 1500
-_AVG_OUTPUT_TOKENS = 300
+_AVG_OUTPUT_TOKENS = 800
 
 # Rough per-call wall-clock seconds. The low end assumes happy-path streaming;
 # the high end accounts for retries and upstream queueing.

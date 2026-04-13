@@ -26,6 +26,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         input_path=Path(args.input) if args.input else None,
         golden_set_path=Path(args.golden_set) if args.golden_set else None,
         judge_model=args.judge or config_data.get("judge_model", "mock"),
+        judge_model_name=args.judge_model or config_data.get("judge_model_name"),
         output_dir=Path(args.output),
         generate_pdf=args.pdf,
         thresholds=config_data.get("thresholds"),
@@ -215,7 +216,15 @@ def main() -> None:
     audit_parser = subparsers.add_parser("audit", help="Run evaluation audit")
     audit_parser.add_argument("--input", help="Path to telemetry JSONL file")
     audit_parser.add_argument("--golden-set", help="Path to golden set JSON file")
-    audit_parser.add_argument("--judge", help="Judge model: mock | claude | openai")
+    audit_parser.add_argument("--judge", help="Judge provider alias: mock | claude | openai")
+    audit_parser.add_argument(
+        "--judge-model",
+        help=(
+            "Specific judge model id passed through to the provider "
+            "(e.g. 'claude-opus-4-6', 'gpt-4-turbo'). "
+            "Falls back to RAG_FORGE_JUDGE_MODEL env var, then the provider default."
+        ),
+    )
     audit_parser.add_argument("--output", default="./reports", help="Output directory")
     audit_parser.add_argument("--config-json", help="JSON config from TS CLI")
     audit_parser.add_argument(

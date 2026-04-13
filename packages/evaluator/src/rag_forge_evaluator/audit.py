@@ -26,6 +26,7 @@ class AuditConfig:
     input_path: Path | None = None
     golden_set_path: Path | None = None
     judge_model: str | None = None
+    judge_model_name: str | None = None  # specific model id passed to the provider
     output_dir: Path = Path("./reports")
     generate_pdf: bool = False
     thresholds: dict[str, float] | None = None
@@ -47,16 +48,24 @@ class AuditReport:
     pdf_report_path: Path | None = None
 
 
-def _create_judge(model: str | None) -> JudgeProvider:
-    """Create a judge provider based on model name."""
+def _create_judge(model: str | None, model_name: str | None = None) -> JudgeProvider:
+    """Create a judge provider based on provider alias and optional model id.
+
+    Args:
+        model: Provider alias - "mock", "claude", "claude-sonnet", "openai",
+            "gpt-4o". Determines which judge class to instantiate.
+        model_name: Specific model identifier passed through to the judge
+            constructor (e.g. "claude-opus-4-6", "gpt-4-turbo"). When None,
+            the judge falls back to its env-var/default model.
+    """
     if model == "mock" or model is None:
         return MockJudge()
     if model in ("claude", "claude-sonnet"):
         from rag_forge_evaluator.judge.claude_judge import ClaudeJudge
-        return ClaudeJudge()
+        return ClaudeJudge(model=model_name)
     if model in ("openai", "gpt-4o"):
         from rag_forge_evaluator.judge.openai_judge import OpenAIJudge
-        return OpenAIJudge()
+        return OpenAIJudge(model=model_name)
     return MockJudge()
 
 
@@ -93,7 +102,7 @@ class AuditOrchestrator:
                     span.set_attribute("source_type", source_type)
 
             # 2. Create evaluator via factory
-            judge = _create_judge(self.config.judge_model)
+            judge = _create_judge(self.config.judge_model, self.config.judge_model_name)
             evaluator = create_evaluator(
                 self.config.evaluator_engine,
                 judge=judge,

@@ -20,7 +20,7 @@
       "types": "./dist/python-bridge.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"

@@ -32,7 +32,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist", "src/modules"],
+  "files": ["dist", "src/modules", "README.md"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -154,7 +154,7 @@ jobs:
 
       - name: Build rag-forge-core
         working-directory: packages/core
-        run: uv build
+        run: uv build --out-dir dist
 
       - name: Publish rag-forge-core to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -164,7 +164,7 @@ jobs:
 
       - name: Build rag-forge-evaluator
         working-directory: packages/evaluator
-        run: uv build
+        run: uv build --out-dir dist
 
       - name: Publish rag-forge-evaluator to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -174,7 +174,7 @@ jobs:
 
       - name: Build rag-forge-observability
         working-directory: packages/observability
-        run: uv build
+        run: uv build --out-dir dist
 
       - name: Publish rag-forge-observability to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

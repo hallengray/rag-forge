@@ -160,7 +160,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/core/dist/
-          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Build rag-forge-evaluator
         working-directory: packages/evaluator
@@ -170,7 +169,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/evaluator/dist/
-          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Build rag-forge-observability
         working-directory: packages/observability
@@ -180,4 +178,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/observability/dist/
-          password: ${{ secrets.PYPI_API_TOKEN }}

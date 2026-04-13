@@ -1,5 +1,5 @@
 {
-  "name": "rag-forge",
+  "name": "@rag-forge/cli",
   "version": "0.1.0",
   "description": "Framework-agnostic CLI toolkit for production-grade RAG pipelines with evaluation baked in",
   "author": "Femi Adedayo",

@@ -23,7 +23,7 @@ export const HERO = {
   headline: "Production-grade RAG pipelines with evaluation baked in.",
   subheadline:
     "RAG-Forge bridges the gap between building RAG pipelines and knowing whether they actually work. Scaffold, evaluate, and assess any pipeline against the RAG Maturity Model.",
-  installCommand: "npm install -g rag-forge",
+  installCommand: "npm install -g @rag-forge/cli",
 } as const;
 
 export type Citation = {
@@ -140,7 +140,7 @@ export const RMM_LEVELS: readonly RmmLevel[] = [
 ];
 
 export const QUICK_START_DEV = `# Install the CLI
-npm install -g rag-forge
+npm install -g @rag-forge/cli
 
 # Scaffold a project
 rag-forge init basic

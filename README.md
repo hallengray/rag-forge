@@ -11,7 +11,7 @@ RAG-Forge bridges the gap between **building** RAG pipelines and **knowing wheth
 **CLI (Node.js 20+):**
 
 ```bash
-npm install -g rag-forge
+npm install -g @rag-forge/cli
 ```
 
 **Python packages (Python 3.11+):**

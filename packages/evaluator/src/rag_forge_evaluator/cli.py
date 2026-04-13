@@ -5,6 +5,7 @@ Outputs JSON to stdout for the TypeScript CLI to parse.
 """
 
 import argparse
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -12,6 +13,14 @@ from pathlib import Path
 from rag_forge_evaluator.audit import AuditConfig, AuditOrchestrator
 from rag_forge_evaluator.progress import StderrProgressReporter
 from rag_forge_observability.tracing import TracingManager
+
+# Ensure line-buffered output when invoked as a subprocess on Windows.
+# Without this, a long-running audit looks completely frozen until exit
+# because Python block-buffers stdout when it is not connected to a TTY.
+with contextlib.suppress(AttributeError, OSError):
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+with contextlib.suppress(AttributeError, OSError):
+    sys.stderr.reconfigure(line_buffering=True)  # type: ignore[union-attr]
 
 
 def cmd_audit(args: argparse.Namespace) -> None:

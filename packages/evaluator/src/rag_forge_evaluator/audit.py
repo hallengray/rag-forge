@@ -118,6 +118,19 @@ class AuditOrchestrator:
 
     def run(self) -> AuditReport:
         """Execute the full audit pipeline."""
+        # 0. Fail fast on missing optional deps before any judge calls run.
+        if self.config.generate_pdf:
+            from rag_forge_evaluator.report.pdf import is_available
+
+            ok, error = is_available()
+            if not ok:
+                msg = (
+                    f"--pdf was requested but PDF generation is unavailable: {error}. "
+                    f"Re-run without --pdf or install the [pdf] extra before starting "
+                    f"the audit (judge calls are expensive)."
+                )
+                raise ConfigurationError(msg)
+
         with self._span("rag-forge.audit"):
             # 1. Load input
             with self._span("rag-forge.load_input") as span:

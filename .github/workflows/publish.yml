@@ -93,6 +93,28 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+      # Wheel validation — catches structural wheel errors BEFORE any
+      # registry upload. v0.2.0 partially-shipped because
+      # rag-forge-evaluator had duplicate filenames inside the wheel ZIP
+      # (a redundant force-include in pyproject.toml). PyPI's strict
+      # validator rejected the upload, but uv build and pip install
+      # tolerated it silently — the only way we could have caught it
+      # locally was by running twine check on the built artifacts.
+      # This step runs twine check + check-wheel-contents on every
+      # Python wheel so the same class of bug fails the verify job
+      # instead of the publish job.
+      - name: Build Python wheels for validation
+        run: |
+          cd packages/core && uv build --out-dir dist && cd -
+          cd packages/evaluator && uv build --out-dir dist && cd -
+          cd packages/observability && uv build --out-dir dist && cd -
+
+      - name: Validate wheels (twine + check-wheel-contents)
+        run: |
+          uv pip install --system twine check-wheel-contents
+          twine check packages/core/dist/* packages/evaluator/dist/* packages/observability/dist/*
+          check-wheel-contents packages/core/dist/*.whl packages/evaluator/dist/*.whl packages/observability/dist/*.whl
+
   publish-npm:
     name: Publish to npm
     needs: verify
@@ -167,6 +189,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/core/dist/
+          skip-existing: true
 
       - name: Build rag-forge-evaluator
         working-directory: packages/evaluator
@@ -176,6 +199,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/evaluator/dist/
+          skip-existing: true
 
       - name: Build rag-forge-observability
         working-directory: packages/observability
@@ -185,3 +209,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/observability/dist/
+          skip-existing: true

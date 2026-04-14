@@ -1,6 +1,6 @@
 [project]
 name = "rag-forge-evaluator"
-version = "0.2.0"
+version = "0.2.1"
 description = "Evaluation engine: RAGAS, DeepEval, LLM-as-Judge, and audit report generation"
 requires-python = ">=3.11"
 license = "MIT"
@@ -45,9 +45,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rag_forge_evaluator"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/rag_forge_evaluator/report/templates" = "rag_forge_evaluator/report/templates"
+# NOTE: Do NOT add a [tool.hatch.build.targets.wheel.force-include] entry for
+# ``report/templates``. ``packages`` already ships the whole tree including
+# the Jinja template, and force-include would duplicate files inside the
+# built wheel's ZIP archive — which PyPI's 2025+ strict validator rejects
+# with "400 Invalid distribution file. Duplicate filename in local headers."
 
 [tool.pytest.ini_options]
 markers = [

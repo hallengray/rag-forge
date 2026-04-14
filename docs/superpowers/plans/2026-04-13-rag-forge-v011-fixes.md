@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix the 9 bugs uncovered by the PearMedica audit on 2026-04-13, cut RAG-Forge v0.1.1, and republish all 6 packages so the next audit run (and every audit after it) is trustworthy end-to-end.
+**Goal:** Fix the 9 bugs uncovered by the cycle-1 audit on 2026-04-13, cut RAG-Forge v0.1.1, and republish all 6 packages so the next audit run (and every audit after it) is trustworthy end-to-end.
 
 **Architecture:** All fixes land on branch `fix/v011-audit-bugs` with one commit per task for CodeRabbit. The largest change is introducing a proper "skipped" sentinel to the metric pipeline so parse failures stop polluting aggregates (Bug #8, the only correctness bug that silently falsifies reports). Everything else is surgical: pin ragas, add retries, fix packaging, fix buffering, guard Playwright at audit start.
 
@@ -12,7 +12,7 @@
 
 ## REVISION 1 — 2026-04-13 (post-Femi feedback)
 
-Femi raised two generalization gaps: (1) the original plan leaked PearMedica-shaped assumptions (hardcoded retry count, hardcoded judge models, silent RAGAS-on-OpenAI behavior even when user passes `--judge claude`); (2) the original plan had no upfront time/cost banner or progress streaming, so users had no idea a run would take 8-15 minutes and cost ~$0.40.
+Femi raised two generalization gaps: (1) the original plan leaked the customer-shaped assumptions (hardcoded retry count, hardcoded judge models, silent RAGAS-on-OpenAI behavior even when user passes `--judge claude`); (2) the original plan had no upfront time/cost banner or progress streaming, so users had no idea a run would take 8-15 minutes and cost ~$0.40.
 
 Three additions/changes supersede parts of the original task list:
 
@@ -117,7 +117,7 @@ Task 14 — Open PR                                      [was Task 12]
 
 ## Task 1: Reproduce bug #8 with a failing test (TDD baseline)
 
-**Why first:** Bug #8 is the one that silently falsified the PearMedica scorecard. We fix it TDD-style: red test → shared parser → green test → metric refactor → aggregate refactor. That gives us four commits with clear blast radius.
+**Why first:** Bug #8 is the one that silently falsified the customer scorecard. We fix it TDD-style: red test → shared parser → green test → metric refactor → aggregate refactor. That gives us four commits with clear blast radius.
 
 **Files:**
 - Create: `packages/evaluator/tests/test_response_parser.py`
@@ -208,7 +208,7 @@ Create `packages/evaluator/src/rag_forge_evaluator/judge/response_parser.py`:
 ```python
 """Robust JSON parser for LLM-judge responses.
 
-Addresses Bug #8 from the 2026-04-13 PearMedica audit: judges sometimes return
+Addresses Bug #8 from the 2026-04-13 cycle-1 audit: judges sometimes return
 empty strings, trailing prose, or code-fenced JSON. The original implementation
 called json.loads() directly and coerced every failure into score=0.0, which
 silently polluted aggregate metrics by up to 3-4x.
@@ -555,7 +555,7 @@ metrics by up to 4x. Metrics now emit skipped=True and the LLM-judge
 evaluator aggregates over successfully-scored samples only, reporting
 scored_count and skipped_count alongside the score.
 
-Uncovered by 2026-04-13 PearMedica audit (27/76 metric evals silently
+Uncovered by 2026-04-13 cycle-1 audit (27/76 metric evals silently
 zeroed, context_relevance 0.063 reported vs ~0.30 real)."
 ```
 
@@ -568,7 +568,7 @@ zeroed, context_relevance 0.063 reported vs ~0.30 real)."
 - Modify: `packages/evaluator/src/rag_forge_evaluator/judge/openai_judge.py`
 - Create: `packages/evaluator/tests/test_judge_retry_config.py`
 
-**Background:** The Anthropic SDK default is 2 retries. PearMedica's audit got a 529 that killed the whole run because 2 retries weren't enough for a sustained overload. The SDK honours `max_retries` on the client and applies exponential backoff automatically — no custom loop needed. Same pattern on the OpenAI SDK.
+**Background:** The Anthropic SDK default is 2 retries. the customer's audit got a 529 that killed the whole run because 2 retries weren't enough for a sustained overload. The SDK honours `max_retries` on the client and applies exponential backoff automatically — no custom loop needed. Same pattern on the OpenAI SDK.
 
 - [ ] **Step 1: Write a test that asserts the client is constructed with retries**
 
@@ -645,7 +645,7 @@ git add packages/evaluator/src/rag_forge_evaluator/judge packages/evaluator/test
 git commit -m "fix(evaluator): set max_retries=5 on Anthropic and OpenAI judge clients
 
 A single 529 Overloaded killed a 19-sample audit mid-run in the
-2026-04-13 PearMedica audit. SDK default is 2 retries which is not
+2026-04-13 cycle-1 audit. SDK default is 2 retries which is not
 enough for sustained upstream overload. Bumping to 5 with the SDK's
 built-in exponential backoff."
 ```
@@ -774,7 +774,7 @@ Expected: all 4 tests PASS.
 git add packages/evaluator/pyproject.toml packages/evaluator/src/rag_forge_evaluator/engines packages/evaluator/tests/test_ragas_evaluator.py
 git commit -m "fix(evaluator): defensive ragas result access + pin ragas <0.3
 
-PearMedica audit hit 'EvaluationResult object has no attribute get'
+cycle-1 audit hit 'EvaluationResult object has no attribute get'
 on ragas >=0.4 because the result type changed. Pin to 0.2.x for
 v0.1.1 (where .get() works) and add a defensive helper that falls
 back through dict / __getitem__ / attribute access so future
@@ -1070,7 +1070,7 @@ In `packages/evaluator/src/rag_forge_evaluator/audit.py`, find the `AuditOrchest
 git add packages/evaluator/src/rag_forge_evaluator/report/pdf.py packages/evaluator/src/rag_forge_evaluator/audit.py
 git commit -m "fix(evaluator): check Playwright availability before running audit
 
-PearMedica audit ran \$0.40 of judge calls and then crashed at the
+cycle-1 audit ran \$0.40 of judge calls and then crashed at the
 very end because Playwright wasn't installed. Check at start so
 users fail fast."
 ```
@@ -1112,7 +1112,7 @@ git add packages/*/package.json packages/*/pyproject.toml docs/release-notes/v0.
 git commit -m "chore(release): bump all packages to 0.1.1
 
 See docs/release-notes/v0.1.1.md for the full changelog including
-the 9 bugs uncovered by the 2026-04-13 PearMedica audit."
+the 9 bugs uncovered by the 2026-04-13 cycle-1 audit."
 ```
 
 ---
@@ -1128,10 +1128,10 @@ git push -u origin fix/v011-audit-bugs
 - [ ] **Step 2: Open the PR**
 
 ```bash
-gh pr create --title "fix: v0.1.1 — 9 bugs from PearMedica first-audit" --body "$(cat <<'EOF'
+gh pr create --title "fix: v0.1.1 — 9 bugs from the customer first-audit" --body "$(cat <<'EOF'
 ## Summary
 
-First real audit run of RAG-Forge (against PearMedica's clinical RAG on 2026-04-13) surfaced 9 distinct bugs. This PR fixes all of them and cuts v0.1.1.
+First real audit run of RAG-Forge (against a clinical RAG audit on 2026-04-13) surfaced 9 distinct bugs. This PR fixes all of them and cuts v0.1.1.
 
 ### Critical correctness fix
 - **Bug #8** — LLM-judge silently coerced 36% of metric evaluations to score=0.0 when the judge returned an empty string or trailing prose. Reported context_relevance was 0.063 vs ~0.30 real. All four metrics now use a shared robust parser and aggregate only over successfully-scored samples, reporting `scored_count` / `skipped_count` separately.
@@ -1158,7 +1158,7 @@ First real audit run of RAG-Forge (against PearMedica's clinical RAG on 2026-04-
 - [ ] `pnpm run test` passes (new tests: 6 parser + 4 ragas helper + 2 retry config + 2 aggregation)
 - [ ] `uv run python -m rag_forge_evaluator.cli --help` works from a fresh install
 - [ ] `uv tool install rag-forge-evaluator` exposes `rag-forge-eval` binary
-- [ ] Full re-run of PearMedica audit verifies real scores vs polluted scores (next session)
+- [ ] Full re-run of cycle-1 audit verifies real scores vs polluted scores (next session)
 EOF
 )"
 ```

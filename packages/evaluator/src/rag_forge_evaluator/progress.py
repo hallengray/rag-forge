@@ -1,6 +1,6 @@
 """Progress reporting for long-running audits.
 
-Addresses a UX gap uncovered during the 2026-04-13 PearMedica audit: users
+Addresses a UX gap uncovered during the 2026-04-13 cycle-1 audit: users
 had no idea a run would take 8-15 minutes or cost real money, and during the
 run there was no indication of progress. The ``ProgressReporter`` protocol
 lets the audit orchestrator emit lifecycle events which a reporter

@@ -1,6 +1,6 @@
 """Judge clients must be configurable for retries, max_tokens, and model.
 
-These tests guard the generalization fixes from the 2026-04-13 PearMedica
+These tests guard the generalization fixes from the 2026-04-13 cycle-1
 audit: hardcoded retry counts and hardcoded 1024-token output budgets
 broke for any customer with a long-response RAG pipeline.
 """
@@ -60,7 +60,7 @@ def test_constructor_arg_wins_over_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_claude_judge_default_max_tokens_is_4096(monkeypatch: pytest.MonkeyPatch) -> None:
-    """PearMedica audit truncated mid-array at 1024. New default is 4096.
+    """cycle-1 audit truncated mid-array at 1024. New default is 4096.
 
     Bumping the default fixes the ~50% parse-failure rate on
     faithfulness/hallucination metrics for long structured responses.

@@ -1,4 +1,4 @@
-"""Regression test for the PearMedica Cycle 2 failure signatures.
+"""Regression test for the Cycle 2 failure signatures.
 
 Asserts that running ragas against a sanitized 3-sample excerpt does
 NOT reproduce any of the v0.1.3 pathologies:
@@ -149,7 +149,7 @@ def test_cycle2_fixture_no_openaiembeddings_attribute_error():
 def test_cycle2_fixture_handles_long_structured_responses():
     """Regression: Finding #5 — max_tokens overflow on long clinical responses.
 
-    PearMedica's structured responses (conditions, triage, differential diagnoses,
+    the cycle-2 customer's structured responses (conditions, triage, differential diagnoses,
     etc.) produce 20-50 extractable statements per case. Cycle 2 observed
     4x finish_reason='length' and 3x InstructorRetryException at the old max_tokens
     limit. v0.2.0 increases max_tokens and wraps the LLM with RagForgeRagasLLM

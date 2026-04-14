@@ -106,7 +106,7 @@ class RagForgeRagasLLM:
     not accept per-call token caps, so the underlying model's own default
     applies. For Claude this is 4096 tokens by default (raisable via the
     ``RAG_FORGE_JUDGE_MAX_TOKENS`` environment variable, which ClaudeJudge
-    honors at construction). The PearMedica Cycle 2 truncation bug that
+    honors at construction). The Cycle 2 truncation bug that
     motivated a configurable max_tokens was fixed upstream in ClaudeJudge
     by raising its default from 1024 → 4096, so most clinical/structured
     workloads no longer need per-call override.

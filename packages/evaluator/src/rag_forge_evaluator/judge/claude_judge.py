@@ -9,7 +9,7 @@ Configuration precedence (highest wins):
    300-second overload budget)
 
 The 4096-token default replaces the previous 1024 after the 2026-04-13
-PearMedica audit, where the faithfulness metric truncated mid-array on
+the customer audit, where the faithfulness metric truncated mid-array on
 long clinical responses and silently scored 0.
 
 The Anthropic SDK's built-in retry loop handles 408/429/500/502/503/504

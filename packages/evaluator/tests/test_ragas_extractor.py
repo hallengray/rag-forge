@@ -1,6 +1,6 @@
 """Defensive ragas result access (Bug #6 fix).
 
-The 2026-04-13 PearMedica audit hit
+The 2026-04-13 cycle-1 audit hit
 ``'EvaluationResult' object has no attribute 'get'`` on ragas >=0.4
 because the result type changed shape between major versions. This
 test covers the defensive helper so future ragas upgrades can't

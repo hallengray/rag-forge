@@ -44,7 +44,7 @@ def _extract_ragas_score(result: object, name: str) -> float:
 
     Raises ValueError if the score cannot be extracted — the caller
     decides whether to record a SkipRecord or re-raise. No silent 0.0
-    fallback (that was the bug surfaced by PearMedica Cycle 2).
+    fallback (that was the bug surfaced by Cycle 2).
 
     ragas 0.2.x returns a dict-like result supporting ``.get()``.
     ragas 0.4.x returns an ``EvaluationResult`` dataclass; ``__getitem__``

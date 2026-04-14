@@ -1,7 +1,7 @@
 """Anthropic 529 Overloaded must be retried by the judge wrapper.
 
 The Anthropic SDK's built-in retry loop covers 408/429/500/502/503/504
-but not 529. A 529 during the PearMedica cycle-2 audit crashed the run
+but not 529. A 529 during the cycle-2 audit crashed the run
 on sample 1. This guards the explicit 529-retry wrapper added in v0.1.2.
 """
 from unittest.mock import MagicMock, patch

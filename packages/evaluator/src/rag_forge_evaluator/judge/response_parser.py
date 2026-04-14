@@ -1,6 +1,6 @@
 """Robust JSON parser for LLM-judge responses.
 
-Addresses Bug #8 from the 2026-04-13 PearMedica audit: judges sometimes return
+Addresses Bug #8 from the 2026-04-13 cycle-1 audit: judges sometimes return
 empty strings, code-fenced JSON, leading/trailing prose, or truncated output
 when they run out of tokens. The original implementation called json.loads()
 directly and coerced every failure into score=0.0, which silently polluted

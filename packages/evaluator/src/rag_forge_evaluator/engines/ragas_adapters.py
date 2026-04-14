@@ -99,10 +99,17 @@ class RagForgeRagasLLM:
 
     Implements the full ragas 0.4.x ``BaseRagasLLM`` contract including the
     extra ``n`` / ``temperature`` / ``stop`` / ``callbacks`` kwargs that ragas
-    passes through from its internal metric prompts. ``max_tokens`` is
-    retained on the instance so future Judge-protocol extensions can pick
-    it up; the current Judge interface does not accept it, so the underlying
-    model's own max-tokens default applies.
+    passes through from its internal metric prompts.
+
+    **Per-call ``max_tokens`` forwarding is a v0.2.1 follow-up.** The current
+    ``Judge`` protocol is ``(system_prompt, user_prompt) -> str`` and does
+    not accept per-call token caps, so the underlying model's own default
+    applies. For Claude this is 4096 tokens by default (raisable via the
+    ``RAG_FORGE_JUDGE_MAX_TOKENS`` environment variable, which ClaudeJudge
+    honors at construction). The PearMedica Cycle 2 truncation bug that
+    motivated a configurable max_tokens was fixed upstream in ClaudeJudge
+    by raising its default from 1024 → 4096, so most clinical/structured
+    workloads no longer need per-call override.
 
     The class does NOT subclass ``BaseRagasLLM`` because that would force a
     hard import of ragas at module load time and break unit tests on
@@ -115,12 +122,10 @@ class RagForgeRagasLLM:
     def __init__(
         self,
         judge: _JudgeLike,
-        max_tokens: int = 8192,
         system_prompt: str = "",
         refusal_aware: bool = True,
     ) -> None:
         self._judge = judge
-        self.max_tokens = max_tokens
         self._system_prompt = system_prompt
         self._refusal_aware = refusal_aware
 

@@ -1,6 +1,7 @@
 """LLM-as-Judge evaluator that delegates to individual metric evaluators."""
 
 import logging
+import math
 import time
 
 from rag_forge_evaluator.engine import (
@@ -228,6 +229,25 @@ def _parse_combined_response(
                 threshold=threshold,
                 passed=False,
                 details=f"'{field}' not numeric: {exc}",
+                skipped=True,
+            )
+            continue
+        # Reject nan/inf and out-of-range values. A judge that returns
+        # -1, 2.5, or nan has produced malformed output; trusting it
+        # would pollute the aggregate. Mark the metric skipped so the
+        # aggregation path excludes it exactly like a parse failure.
+        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+            logger.warning(
+                "Combined judge '%s' is out of range [0.0, 1.0]: %r",
+                field,
+                score,
+            )
+            results[field] = MetricResult(
+                name=field,
+                score=0.0,
+                threshold=threshold,
+                passed=False,
+                details=f"'{field}' out of range [0.0, 1.0]: {score}",
                 skipped=True,
             )
             continue

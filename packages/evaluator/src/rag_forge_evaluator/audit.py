@@ -83,8 +83,11 @@ class AuditConfig:
     assume_yes: bool = False
     on_judge_retry: OnRetryCallback | None = None
     refusal_aware: bool = True
-    ragas_max_tokens: int = 8192
     ragas_embeddings_provider: str | None = None  # None = auto-select from judge type
+    # NOTE: per-call max_tokens forwarding to the ragas LLM wrapper is a
+    # v0.2.1 follow-up. The underlying judge's own default max_tokens
+    # (ClaudeJudge: 4096, configurable via RAG_FORGE_JUDGE_MAX_TOKENS env
+    # var) applies during ragas runs.
 
 
 @dataclass
@@ -161,15 +164,17 @@ class AuditOrchestrator:
             # Normalize None → "mock" so programmatic configs that leave
             # judge_model unset (matching the old default path where
             # _create_judge constructs MockJudge) don't trip this allowlist
-            # before we ever reach the judge factory.
+            # before we ever reach the judge factory. Also reuse
+            # _KNOWN_JUDGE_ALIASES as the single source of truth — if
+            # _create_judge() accepts an alias, ragas must too.
             judge = config.judge_model if config.judge_model is not None else "mock"
-            if judge not in ("openai", "gpt-4o", "claude", "mock"):
+            if judge not in _KNOWN_JUDGE_ALIASES:
                 msg = (
                     f"--evaluator ragas does not support --judge {judge!r}. "
-                    "Use claude, openai, or mock."
+                    f"Expected one of: {', '.join(repr(a) for a in _KNOWN_JUDGE_ALIASES)}."
                 )
                 raise ConfigurationError(msg)
-            if judge == "claude" and not _voyageai_installed():
+            if judge in ("claude", "claude-sonnet") and not _voyageai_installed():
                 msg = (
                     "--evaluator ragas --judge claude requires Voyage embeddings. "
                     "Install with: pip install rag-forge-evaluator[ragas-voyage]\n"

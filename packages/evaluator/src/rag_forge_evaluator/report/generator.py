@@ -346,7 +346,12 @@ def _build_compliance(
             "(caching, RBAC, drift detection) are not automatically verified."
         ),
         "github_url": "github.com/hallengray/rag-forge",
-        "page_total_display": "Page 1 of 1",
+        # ``page_total_display`` is intentionally omitted — per-sample
+        # detail makes multi-page reports common, and the actual page
+        # count is determined at print time by the browser/PDF engine,
+        # not at template-render time. The template's ``@page`` rules
+        # handle page-number footers via CSS counters.
+        "page_total_display": "",
     }
 
 
@@ -732,10 +737,11 @@ class ReportGenerator:
         worst = _get_worst_samples(sample_results or [])
 
         # Compute safety refusal rate — v0.2.0
-        samples_evaluated = result.samples_evaluated or 1  # guard against divide-by-zero
         refusal_count = result.scoring_modes_count.get("safety_refusal", 0)
         safety_refusal_rate = (
-            refusal_count / samples_evaluated if result.samples_evaluated else 0.0
+            refusal_count / result.samples_evaluated
+            if result.samples_evaluated
+            else 0.0
         )
 
         data = {

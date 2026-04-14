@@ -26,7 +26,7 @@ RAG-Forge's evaluator now understands what your RAG was built to do, and communi
 
 ### Migration guide
 
-1. Run `pip install -U rag-forge-evaluator[ragas]` — ragas will upgrade to 0.4.x automatically.
+1. Run `pip install -U rag-forge-evaluator[ragas]` — ragas will upgrade to a supported version in the `>=0.4,<0.6` range automatically.
 2. If you use Claude judge with ragas, also install Voyage embeddings: `pip install rag-forge-evaluator[ragas-voyage]`.
 3. Re-run any baseline audits to establish new-scoring-mode baselines for your CI gates.
 4. To preserve v0.1.x scoring semantics in CI, add `--strict` to your audit commands.

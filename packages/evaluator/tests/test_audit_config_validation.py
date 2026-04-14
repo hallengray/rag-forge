@@ -175,11 +175,17 @@ def test_audit_config_refusal_aware_default_on() -> None:
     assert config.refusal_aware is True
 
 
-def test_audit_config_ragas_max_tokens_default_8192() -> None:
+def test_audit_config_ragas_embeddings_provider_default_none() -> None:
+    """AuditConfig defaults to auto-selecting embeddings from judge type.
+
+    Per-call ``max_tokens`` forwarding through the ragas adapter is a
+    v0.2.1 follow-up — the underlying Judge's own default applies during
+    ragas runs, so AuditConfig no longer carries a ``ragas_max_tokens``
+    field that would misleadingly suggest otherwise.
+    """
     config = AuditConfig(
         input_path=Path("tests/fixtures/tiny.jsonl"),
         evaluator_engine="ragas",
         judge_model="openai",
     )
-    assert config.ragas_max_tokens == 8192
     assert config.ragas_embeddings_provider is None

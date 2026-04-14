@@ -172,7 +172,6 @@ def test_cycle2_fixture_handles_long_structured_responses():
         judge=MockJudge(),
         thresholds={},
         embeddings_provider="mock",
-        max_tokens=8192,  # v0.2.0 default; should not truncate
     )
     result = evaluator.evaluate(samples)
 

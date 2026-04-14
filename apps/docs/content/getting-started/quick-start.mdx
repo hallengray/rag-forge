@@ -8,20 +8,31 @@ title: Quick Start
 
 ## 1. Create a project
 
-The `init` command scaffolds a new RAG project from a template. Pass the template name as a positional argument (defaults to `basic` if omitted):
+The `init` command scaffolds a new RAG project from a template. The single positional argument is the **template name** (defaults to `basic` if omitted). Use `--directory` to set the target folder name:
 
 ```bash
-rag-forge init my-rag-app
+rag-forge init basic --directory my-rag-app
 cd my-rag-app
 ```
 
 Available templates: `basic`, `hybrid`, `agentic`, `enterprise`, `n8n`. To scaffold a different one:
 
 ```bash
-rag-forge init my-rag-app hybrid
+rag-forge init hybrid --directory my-rag-app
 ```
 
-## 2. Build the index
+If you omit `--directory`, the project is created in a folder named after the template (e.g. `./basic`).
+
+## 2. Add some documents to index
+
+The `basic` template doesn't ship with sample documents — drop your own into a folder, or create a small example:
+
+```bash
+mkdir docs
+echo "RAG-Forge is a CLI for building and evaluating RAG pipelines." > docs/example.md
+```
+
+## 3. Build the index
 
 Point `index` at your source documents. The `--source` flag is required:
 
@@ -32,13 +43,13 @@ rag-forge index --source ./docs
 This parses, chunks, embeds, and writes your documents to the configured vector store.
 By default it uses the `mock` embedding provider — set `--embedding openai` (or `local`) for real embeddings.
 
-## 3. Query
+## 4. Query
 
 ```bash
 rag-forge query "What does RAG-Forge do?"
 ```
 
-## 4. Audit retrieval quality
+## 5. Audit retrieval quality
 
 ```bash
 rag-forge audit --golden-set eval/golden_set.json

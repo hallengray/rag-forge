@@ -1,12 +1,12 @@
-export const CONTENT_LAST_VERIFIED = "2026-04-13";
+export const CONTENT_LAST_VERIFIED = "2026-04-14";
 
 export const SITE = {
   name: "RAG-Forge",
-  url: "https://rag-forge.vercel.app",
+  url: "https://rag-forge-site.vercel.app",
   github: "https://github.com/hallengray/rag-forge",
   npm: "https://www.npmjs.com/package/@rag-forge/cli",
   pypi: "https://pypi.org/project/rag-forge-core",
-  docs: "https://github.com/hallengray/rag-forge#readme",
+  docs: "https://rag-forge-docs.vercel.app/",
   contributing:
     "https://github.com/hallengray/rag-forge/blob/main/CONTRIBUTING.md",
   releaseNotes:
@@ -63,12 +63,12 @@ export const PROBLEMS: readonly ProblemStat[] = [
     },
   },
   {
-    stat: "0",
-    label: "open-source frameworks let you score any pipeline against a maturity model with framework-agnostic CLI tooling — until now",
+    stat: "Few",
+    label: "open-source frameworks score any pipeline against a maturity model with framework-agnostic CLI tooling — RAG-Forge is one of them",
     source: "RAG-Forge",
     citation: {
       url: "https://github.com/hallengray/rag-forge",
-      retrieved: "2026-04-13",
+      retrieved: "2026-04-14",
     },
   },
 ];
@@ -151,11 +151,15 @@ export const RMM_LEVELS: readonly RmmLevel[] = [
 export const QUICK_START_DEV = `# Install the CLI
 npm install -g @rag-forge/cli
 
-# Scaffold a project
-rag-forge init basic
+# Scaffold a project (use --directory to name the folder)
+rag-forge init basic --directory my-rag-project
+cd my-rag-project
+
+# Drop your documents into a folder of your choice
+mkdir docs
+echo "RAG-Forge is a CLI for building and evaluating RAG pipelines." > docs/example.md
 
 # Index your docs and run an audit
-cd my-rag-project
 rag-forge index --source ./docs
 rag-forge audit --golden-set eval/golden_set.json`;
 
@@ -214,9 +218,25 @@ export const COMPARISON = {
   values: {
     "rag-forge": [true, true, true, true, true, true, true, true],
     langchain: [false, "partial", false, "partial", false, false, false, false],
-    llamaindex: [false, false, false, false, false, false, false, false],
+    llamaindex: ["partial", "partial", false, false, false, "partial", false, false],
     ragas: [true, true, false, false, false, false, false, false],
   },
+  peerStrengths: [
+    {
+      name: "RAGAS",
+      detail:
+        "Deeper metric research and a larger community. RAG-Forge's evaluator supports RAGAS as a backend — `rag-forge audit --evaluator ragas`.",
+    },
+    {
+      name: "LangChain & LlamaIndex",
+      detail:
+        "Far broader integration ecosystems if you're already invested in their framework. RAG-Forge complements them by sitting on top of any pipeline.",
+    },
+    {
+      name: "Giskard",
+      detail: "Strong general-purpose ML testing story beyond RAG.",
+    },
+  ],
 } as const;
 
 export const TEMPLATES = [

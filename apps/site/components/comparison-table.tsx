@@ -100,6 +100,27 @@ export function ComparisonTable() {
             {formatLastVerified(COMPARISON_LAST_VERIFIED)}.
           </p>
         </div>
+
+        <div className="mt-12 mx-auto max-w-3xl">
+          <h3 className="text-sm font-semibold tracking-wide uppercase text-[var(--color-muted)] mb-4 text-center">
+            Peer strengths worth knowing
+          </h3>
+          <ul className="space-y-3 text-sm text-[var(--color-muted)] leading-relaxed">
+            {COMPARISON.peerStrengths.map((peer) => (
+              <li key={peer.name}>
+                <span className="font-semibold text-[var(--color-foreground)]">
+                  {peer.name}:
+                </span>{" "}
+                {peer.detail}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-xs text-[var(--color-muted)] text-center">
+            Pick the tool that matches your stage. RAG-Forge&apos;s wedge is the
+            full lifecycle — scaffold → evaluate → score → ship — in one CLI,
+            with the RAG Maturity Model as the objective function.
+          </p>
+        </div>
       </div>
     </section>
   );

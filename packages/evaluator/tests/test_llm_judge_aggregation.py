@@ -104,7 +104,7 @@ def test_aggregate_marks_metric_failed_when_no_scored_samples() -> None:
 
 
 def test_missing_field_is_skipped_not_zero() -> None:
-    """Per PearMedica forensic finding: when judge JSON parses but the expected
+    """Per cycle-1 forensic finding: when judge JSON parses but the expected
     fields are absent, every metric must be skipped — not treated as worst-case.
 
     The combined path treats a response with no recognised metric keys as a
@@ -122,7 +122,7 @@ def test_missing_field_is_skipped_not_zero() -> None:
     assert result.skipped_evaluations == 4
 
 
-def test_pearmedica_pollution_scenario() -> None:
+def test_cycle1_pollution_scenario() -> None:
     """Reproduce the exact pathology from the 2026-04-13 audit at smaller scale.
 
     19 samples with 27/76 parse failures dragged context_relevance to 0.063

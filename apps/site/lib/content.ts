@@ -186,22 +186,22 @@ export const COMPARISON_CITATIONS: Readonly<Record<string, Citation>> = {
   },
 };
 
-// What's new in v0.1.3 — surfaced on the landing page so visitors who
+// What's new in v0.2.0 — surfaced on the landing page so visitors who
 // hit the site after the launch announcement land on something concrete.
 export const WHATS_NEW = {
-  version: "v0.1.3",
-  tagline: "Audit resilience — partial reports and configurable retry budget",
-  date: "2026-04-13",
+  version: "v0.2.0",
+  tagline: "Evaluator Refresh — refusal-aware scoring, rebuilt RAGAS adapter, top-tier audit report",
+  date: "2026-04-14",
   highlights: [
-    "Partial audit-report.partial.json on mid-loop abort — never lose progress from a crash, Ctrl+C, or sustained overload",
-    "Configurable RAG_FORGE_JUDGE_OVERLOAD_BUDGET_SECONDS (default 300s) so long audits survive sustained Anthropic capacity events",
-    "Real-time 529 retry notices stream to stderr so long-running audits never look frozen",
-    "New exit code 3 for partial audits — CI scripts can branch on partial vs hard failure vs clean run",
-    "OverloadBudgetExhaustedError wraps the underlying 529 with actionable fallback options",
-    "Dual-surface partial reports — top-level metrics null for screenshot safety, subset aggregates namespaced with caveats",
+    "Refusal-aware scoring (default-on) — safety-conscious RAGs that refuse to fabricate are no longer penalized as non-answers. Pass --strict to revert to v0.1.x semantics.",
+    "RAGAS adapter rebuilt around injected LLM + embeddings wrappers — version-stable across ragas 0.4.x, and --judge claude --evaluator ragas finally works end-to-end.",
+    "New [ragas-voyage] optional extra — Claude-native shops can run RAGAS with Voyage embeddings, no OpenAI key required.",
+    "Top-tier audit report — rebuilt Jinja template with shared browser/print stylesheet, historical sparkline, TL;DR callout, cost summary, safety refusals section, and NIST/ISO/EU compliance footer.",
+    "SkipRecord replaces silent 0.0 coercion — broken infrastructure is visible in the report instead of indistinguishable from a pipeline that scored zero on everything.",
+    "255 passing tests + 4 gated (ragas 0.4.x contract test, Playwright visual regression) — three CodeRabbit review rounds cleared before merge.",
   ],
   releaseNotesUrl:
-    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.1.3.md",
+    "https://github.com/hallengray/rag-forge/blob/main/docs/release-notes/v0.2.0.md",
 } as const;
 
 export const COMPARISON = {

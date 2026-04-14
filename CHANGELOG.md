@@ -20,7 +20,7 @@ RAG-Forge's evaluator now understands what your RAG was built to do, and communi
 
 ### Fixed
 
-- `OpenAIEmbeddings.embed_query` AttributeError on ragas 0.4.x (Finding #4 from PearMedica Cycle 2).
+- `OpenAIEmbeddings.embed_query` AttributeError on ragas 0.4.x (Finding #4 from Cycle 2).
 - `gpt-4o-mini` max_tokens overflow on long structured clinical responses (Finding #5). The wrapper now honors `AuditConfig.ragas_max_tokens`, default 8192.
 - RAGAS exceptions no longer silently coerce to score 0.0. Skipped samples are tracked as `SkipRecord`s and surfaced in both JSON and HTML/PDF reports (Finding #6).
 
@@ -33,4 +33,4 @@ RAG-Forge's evaluator now understands what your RAG was built to do, and communi
 
 ### Credits
 
-This release is driven by findings from the PearMedica Cycle 2 audit (2026-04-14), which exercised RAG-Forge 0.1.3 against a real clinical RAG pipeline and exposed the three RAGAS bugs plus the safety-refusal scoring gap that v0.2.0 closes.
+This release is driven by findings from the Cycle 2 clinical audit (2026-04-14), which exercised RAG-Forge 0.1.3 against a real clinical RAG pipeline and exposed the three RAGAS bugs plus the safety-refusal scoring gap that v0.2.0 closes.

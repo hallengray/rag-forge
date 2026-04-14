@@ -48,12 +48,12 @@ def _make_report() -> EvaluationResult:
 
 
 def test_generate_html_contains_project_name():
-    html = generate_html(_make_report(), project_name="PearMedica")
-    assert "PearMedica" in html
+    html = generate_html(_make_report(), project_name="AcmeClinical")
+    assert "AcmeClinical" in html
 
 
 def test_generate_html_contains_rmm_level_and_explanation():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     # Some kind of RMM level must appear
     assert "Level" in html
     # Plain-English phrase about advancing to the next level
@@ -61,14 +61,14 @@ def test_generate_html_contains_rmm_level_and_explanation():
 
 
 def test_generate_html_shows_tldr_sections():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     assert "What's working" in html
     assert "What needs fixing" in html
     assert "Priority next step" in html.lower() or "priority next step" in html.lower() or "Priority next step" in html
 
 
 def test_generate_html_shows_safety_refusal_case():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     # The safety-refusal sample id should appear in the refusals section
     assert "t2dm-002" in html
     # And the justification quoted
@@ -76,7 +76,7 @@ def test_generate_html_shows_safety_refusal_case():
 
 
 def test_generate_html_renders_compliance_footer_with_rag_forge_author():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     assert "RAG-Forge" in html
     assert "NIST" in html
     assert "ISO/IEC 42001" in html
@@ -85,13 +85,13 @@ def test_generate_html_renders_compliance_footer_with_rag_forge_author():
 
 
 def test_generate_html_shows_refusal_rate():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     # 1 refusal / 12 samples ≈ 8%
     assert "8" in html
 
 
 def test_generate_html_omits_refusal_warning_when_rate_low():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     assert "High refusal rate detected" not in html
 
 
@@ -118,7 +118,7 @@ def test_generate_html_shows_refusal_warning_when_rate_high():
     report.samples_evaluated = 12
     report.scoring_modes_count = {"standard": 7, "safety_refusal": 5}
 
-    html = generate_html(report, project_name="PearMedica")
+    html = generate_html(report, project_name="AcmeClinical")
     assert "High refusal rate detected" in html
 
 
@@ -127,13 +127,13 @@ def test_generate_html_shows_skipped_section_when_skips_present():
     report.skipped_samples = [
         SkipRecord(sample_id="s-broken", metric_name="faithfulness", reason="timeout", exception_type="TimeoutError"),
     ]
-    html = generate_html(report, project_name="PearMedica")
+    html = generate_html(report, project_name="AcmeClinical")
     assert "s-broken" in html
     assert "TimeoutError" in html
 
 
 def test_generate_html_plain_english_metric_descriptions():
-    html = generate_html(_make_report(), project_name="PearMedica")
+    html = generate_html(_make_report(), project_name="AcmeClinical")
     # The "What it measures" column has plain-English phrasing
     assert "stay true to the retrieved sources" in html or "stay true" in html
     assert "address what was asked" in html or "address the question" in html.lower()

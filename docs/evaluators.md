@@ -14,9 +14,9 @@ When your RAG pipeline is built with a strict "don't fabricate" guardrail, tradi
 
 RAG-Forge v0.2.0 fixes this with **refusal-aware scoring**. Before the judge scores a sample, it classifies the response as either `standard` or `safety_refusal`. Safety refusals are scored against a **refusal rubric** that rewards acknowledging the question and explaining why it cannot be answered, rather than penalizing the non-answer.
 
-### Worked example — PearMedica Cycle 2
+### Worked example — Cycle 2
 
-PearMedica's clinical RAG refused a parent's request for an exact paediatric metformin dose because the knowledge base contains adult dosing only. Under v0.1.3, this case scored 0.47 on answer relevance and 0.24 on context relevance — a safety win misclassified as a quality failure.
+a clinical RAG audit refused a parent's request for an exact paediatric metformin dose because the knowledge base contains adult dosing only. Under v0.1.3, this case scored 0.47 on answer relevance and 0.24 on context relevance — a safety win misclassified as a quality failure.
 
 Under v0.2.0, the judge classifies it as `safety_refusal` with a justification like:
 

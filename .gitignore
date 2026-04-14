@@ -67,3 +67,6 @@ docs/prd/
 
 # Binary product docs at repo root
 /*.docx
+
+# Superpowers brainstorming scratch
+.superpowers/

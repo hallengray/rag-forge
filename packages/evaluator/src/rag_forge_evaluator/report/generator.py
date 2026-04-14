@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
@@ -111,7 +112,7 @@ def _compute_rmm_summary(report: EvaluationResult) -> tuple[int, str, str]:
     return level_number, level_name, explanation
 
 
-def _build_tldr(report: EvaluationResult) -> dict:
+def _build_tldr(report: EvaluationResult) -> dict[str, Any]:
     """Build the TL;DR box dict from passing/failing metrics.
 
     Returns:
@@ -169,9 +170,9 @@ def _build_tldr(report: EvaluationResult) -> dict:
     }
 
 
-def _build_ladder(current_level: int) -> list[dict]:
+def _build_ladder(current_level: int) -> list[dict[str, Any]]:
     """Return six ladder-cell dicts with state ``cleared`` / ``current`` / ``next`` / ``future``."""
-    cells: list[dict] = []
+    cells: list[dict[str, Any]] = []
     for i in range(6):
         if i < current_level:
             state = "cleared"
@@ -189,7 +190,7 @@ def _build_ladder(current_level: int) -> list[dict]:
     return cells
 
 
-def _build_refusals(report: EvaluationResult) -> dict:
+def _build_refusals(report: EvaluationResult) -> dict[str, Any]:
     """Compute refusal rate and per-case detail.
 
     Warns when rate > 30%.
@@ -208,7 +209,7 @@ def _build_refusals(report: EvaluationResult) -> dict:
         else ""
     )
 
-    cases: list[dict] = []
+    cases: list[dict[str, Any]] = []
     for sr in report.sample_results:
         if sr.scoring_mode == "safety_refusal":
             cases.append({
@@ -227,7 +228,7 @@ def _build_refusals(report: EvaluationResult) -> dict:
     }
 
 
-def _build_worst_case(report: EvaluationResult) -> dict:
+def _build_worst_case(report: EvaluationResult) -> dict[str, Any]:
     """Find the sample with the single lowest metric score.
 
     Returns a dict with ``sample_id``, ``headline_metrics``, and ``diagnosis_html``.
@@ -275,9 +276,9 @@ def _build_worst_case(report: EvaluationResult) -> dict:
     }
 
 
-def _build_samples(report: EvaluationResult) -> list[dict]:
+def _build_samples(report: EvaluationResult) -> list[dict[str, Any]]:
     """One dict per sample, shaped for the template's per-sample card loop."""
-    result: list[dict] = []
+    result: list[dict[str, Any]] = []
     for sr in report.sample_results:
         result.append({
             "sample_id": sr.sample_id or "(unknown)",
@@ -292,7 +293,7 @@ def _build_samples(report: EvaluationResult) -> list[dict]:
     return result
 
 
-def _build_skipped(report: EvaluationResult) -> list[dict]:
+def _build_skipped(report: EvaluationResult) -> list[dict[str, Any]]:
     """Serialize each ``SkipRecord`` to a flat dict."""
     return [
         {
@@ -310,7 +311,7 @@ def _build_compliance(
     judge_model: str,
     report_date: str,
     report_time_utc: str,
-) -> dict:
+) -> dict[str, Any]:
     """Produce the compliance-footer sub-fields."""
     method_html = (
         f"Evaluation engine: <strong>{evaluator_name}</strong>. "
@@ -346,7 +347,7 @@ def _build_compliance(
     }
 
 
-def _build_cost(cost_summary: object | None) -> dict:
+def _build_cost(cost_summary: object | None) -> dict[str, Any]:
     """Produce cost-block sub-fields.
 
     When ``cost_summary`` is None, return sensible zero defaults.
@@ -369,7 +370,7 @@ def _build_cost(cost_summary: object | None) -> dict:
             "provider_display": "Mock",
         }
 
-    def _attr(obj: object, name: str, default: object = 0) -> object:
+    def _attr(obj: object, name: str, default: Any = 0) -> Any:
         return getattr(obj, name, default)
 
     total_usd = float(_attr(cost_summary, "total_usd", 0.0))
@@ -404,9 +405,9 @@ def _build_cost(cost_summary: object | None) -> dict:
     }
 
 
-def _format_metric_rows(report: EvaluationResult) -> list[dict]:
+def _format_metric_rows(report: EvaluationResult) -> list[dict[str, Any]]:
     """Each metric becomes one table row with a plain-English description."""
-    rows: list[dict] = []
+    rows: list[dict[str, Any]] = []
     for m in report.metrics:
         description = _METRIC_DESCRIPTIONS.get(
             m.name.lower(),
@@ -424,7 +425,7 @@ def _format_metric_rows(report: EvaluationResult) -> list[dict]:
 
 def _history_to_svg_points(
     history_points: list[tuple[str, float]],
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Convert ``(label, score)`` pairs to SVG coordinate dicts.
 
     X ranges 15 → 145 (evenly spaced across that interval).
@@ -441,7 +442,7 @@ def _history_to_svg_points(
         step = (145.0 - 15.0) / (n - 1)
         xs = [15.0 + i * step for i in range(n)]
 
-    result: list[dict] = []
+    result: list[dict[str, Any]] = []
     for idx, (label, score) in enumerate(history_points):
         x = round(xs[idx], 1)
         y = round(66.0 - (score * 47.0), 1)

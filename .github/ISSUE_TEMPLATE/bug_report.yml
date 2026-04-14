@@ -71,5 +71,8 @@ body:
     id: logs
     attributes:
       label: Relevant logs
-      description: Paste logs, stack traces, or error output. Will be rendered as a code block.
+      description: |
+        Paste logs, stack traces, or error output. Will be rendered as a code block.
+
+        ⚠️ **Before submitting, please redact:** API keys, tokens, passwords, personal emails, IP addresses, customer names, and any other secrets or PII. Issues are public.
       render: shell

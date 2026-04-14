@@ -2,7 +2,9 @@
 
 **Date:** 2026-04-14
 **Owner:** Femi Adedayo
-**Status:** Approved — ready for implementation plan
+**Status:** Implemented (PR1 #28)
+
+> **Implementation note:** This spec originally proposed adding Playwright as a project devDep with a `scripts/og-template.html` source and `scripts/generate-og-image.ts` generator. During implementation we chose a lighter approach to avoid adding ~300MB of devDeps for a quarterly task. The canonical OG source is now `.github/og-image.html` (with regen instructions in its header comment), generated via the session's Playwright MCP server. References below to `scripts/og-template.html` / `scripts/generate-og-image.ts` should be read as `.github/og-image.html` and the inline `npx playwright` one-liner documented in that file.
 
 ## Problem
 

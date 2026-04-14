@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-14-github-repo-polish-design.md`
 
+> **Implementation note (post-execution):** Tasks 8–10 originally specified `scripts/og-template.html` + `scripts/generate-og-image.ts` with Playwright as a project devDep. During execution we used a lighter approach: the canonical OG source lives at `.github/og-image.html` with a regen one-liner in its header comment (`npx -y playwright@latest`), avoiding ~300MB of devDeps for a quarterly task. References below to `scripts/og-template.html` and `scripts/generate-og-image.ts` are historical — the actual committed file is `.github/og-image.html`. The CoC enforcement contact also moved from GitHub Private Vulnerability Reporting to a direct GitHub DM to `@hallengray` after CodeRabbit correctly noted that PVR is reserved for technical security vulnerabilities, not conduct violations.
+
 ---
 
 ## PR1 — `chore/repo-polish`

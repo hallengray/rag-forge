@@ -2,6 +2,23 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Literal
+
+# Type alias for scoring modes
+ScoringMode = Literal["standard", "safety_refusal"]
+
+
+@dataclass
+class SkipRecord:
+    """A sample that could not be scored by an evaluator.
+
+    Replaces the old 0.0-on-exception coercion.
+    """
+
+    sample_id: str
+    metric_name: str
+    reason: str
+    exception_type: str
 
 
 @dataclass
@@ -13,6 +30,7 @@ class EvaluationSample:
     response: str
     expected_answer: str | None = None
     chunk_ids: list[str] | None = None
+    sample_id: str | None = None
 
 
 @dataclass
@@ -34,6 +52,8 @@ class MetricResult:
     skipped: bool = False
     skipped_count: int = 0
     scored_count: int = 0
+    scoring_mode: ScoringMode | None = None
+    refusal_justification: str | None = None
 
 
 @dataclass
@@ -45,6 +65,9 @@ class SampleResult:
     metrics: dict[str, float]
     worst_metric: str
     root_cause: str
+    sample_id: str | None = None
+    scoring_mode: ScoringMode | None = None
+    refusal_justification: str | None = None
 
 
 @dataclass
@@ -57,6 +80,8 @@ class EvaluationResult:
     passed: bool
     sample_results: list[SampleResult] = field(default_factory=list)
     skipped_evaluations: int = 0
+    skipped_samples: list[SkipRecord] = field(default_factory=list)
+    scoring_modes_count: dict[str, int] = field(default_factory=dict)
 
 
 class EvaluatorInterface(ABC):

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/hallengray/rag-forge/discussions
+    about: Ask questions, share ideas, or get help from the community.
+  - name: Report a security vulnerability
+    url: https://github.com/hallengray/rag-forge/security/advisories/new
+    about: Please report security issues privately via GitHub's private vulnerability reporting.

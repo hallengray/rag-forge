@@ -47,20 +47,19 @@ def test_ragas_with_claude_sonnet_alias_also_raises() -> None:
 
 
 
-def test_ragas_with_mock_judge_is_blocked() -> None:
-    """Mock is NOT allowed with ragas: ragas spends real OpenAI tokens
-    regardless of --judge, so a mock config would skip the cost gate
-    while still incurring real charges. Per CodeRabbit critical review.
+def test_ragas_with_mock_judge_is_allowed() -> None:
+    """Mock IS allowed with ragas in v0.2.0: the RAGAS engine now uses a
+    RagForgeRagasLLM wrapper that honors the configured judge end-to-end,
+    so mock no longer bypasses the cost gate while silently spending real
+    OpenAI tokens. This replaces the old 'mock is blocked' test.
     """
     config = AuditConfig(
         input_path=Path("x.jsonl"),
         judge_model="mock",
         evaluator_engine="ragas",
     )
-    with pytest.raises(ConfigurationError) as exc:
-        AuditOrchestrator(config)
-    assert "mock" in str(exc.value)
-    assert "openai" in str(exc.value).lower()
+    orchestrator = AuditOrchestrator(config)
+    assert orchestrator.config is config
 
 
 def test_unknown_judge_alias_raises() -> None:
@@ -124,3 +123,62 @@ def test_llm_judge_with_openai_is_allowed() -> None:
     )
     orchestrator = AuditOrchestrator(config)
     assert orchestrator.config is config
+
+
+def test_ragas_claude_combo_is_allowed_when_voyageai_available(tmp_path: Path) -> None:
+    from unittest.mock import patch
+
+    fixture = tmp_path / "tiny.json"
+    fixture.write_text('{"samples": []}')
+
+    config = AuditConfig(
+        input_path=None,
+        golden_set_path=str(fixture),
+        evaluator_engine="ragas",
+        judge_model="claude",
+        judge_model_name="claude-sonnet-4-6",
+        assume_yes=True,
+    )
+
+    with patch("rag_forge_evaluator.audit._voyageai_installed", return_value=True):
+        # Construction should succeed — no ConfigurationError.
+        AuditOrchestrator(config)
+
+
+def test_ragas_claude_combo_errors_when_voyageai_missing(tmp_path: Path) -> None:
+    from unittest.mock import patch
+
+    fixture = tmp_path / "tiny.json"
+    fixture.write_text('{"samples": []}')
+
+    config = AuditConfig(
+        input_path=None,
+        golden_set_path=str(fixture),
+        evaluator_engine="ragas",
+        judge_model="claude",
+        judge_model_name="claude-sonnet-4-6",
+        assume_yes=True,
+    )
+
+    with patch("rag_forge_evaluator.audit._voyageai_installed", return_value=False):
+        with pytest.raises(ConfigurationError, match="ragas-voyage"):
+            AuditOrchestrator(config)
+
+
+def test_audit_config_refusal_aware_default_on() -> None:
+    config = AuditConfig(
+        input_path=Path("tests/fixtures/tiny.jsonl"),
+        evaluator_engine="llm-judge",
+        judge_model="mock",
+    )
+    assert config.refusal_aware is True
+
+
+def test_audit_config_ragas_max_tokens_default_8192() -> None:
+    config = AuditConfig(
+        input_path=Path("tests/fixtures/tiny.jsonl"),
+        evaluator_engine="ragas",
+        judge_model="openai",
+    )
+    assert config.ragas_max_tokens == 8192
+    assert config.ragas_embeddings_provider is None

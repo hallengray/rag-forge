@@ -19,6 +19,13 @@ import hashlib
 from typing import Literal, Protocol, runtime_checkable
 
 
+_REFUSAL_NOTE = (
+    "NOTE: If the retrieved context lacks sufficient information to answer the question, "
+    "and the response is a valid safety refusal (declining to fabricate), score faithfulness "
+    "and hallucination at 1.0 — the refusal is correct behavior.\n\n"
+)
+
+
 @runtime_checkable
 class _JudgeLike(Protocol):
     """Protocol matching rag-forge's Judge interface."""
@@ -46,13 +53,17 @@ class RagForgeRagasLLM:
         judge: _JudgeLike,
         max_tokens: int = 8192,
         system_prompt: str = "",
+        refusal_aware: bool = True,
     ) -> None:
         self._judge = judge
         self.max_tokens = max_tokens
         self._system_prompt = system_prompt
+        self._refusal_aware = refusal_aware
 
     def generate_text(self, prompt: str) -> str:
         """Generate text using the underlying judge."""
+        if self._refusal_aware:
+            prompt = _REFUSAL_NOTE + prompt
         return self._judge.judge(self._system_prompt, prompt)
 
     async def agenerate_text(self, prompt: str) -> str:

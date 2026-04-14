@@ -95,11 +95,13 @@ class RagasEvaluator(EvaluatorInterface):
         thresholds: dict[str, float] | None = None,
         max_tokens: int = 8192,
         embeddings_provider: EmbeddingProvider | None = None,
+        refusal_aware: bool = True,
     ) -> None:
         self._judge = judge
         self._thresholds = thresholds or {}
         self._max_tokens = max_tokens
         self._embeddings_provider = embeddings_provider or _auto_select_provider(judge)
+        self._refusal_aware = refusal_aware
 
     def evaluate(self, samples: list[EvaluationSample]) -> EvaluationResult:
         if not samples:
@@ -126,7 +128,11 @@ class RagasEvaluator(EvaluatorInterface):
             msg = "RAGAS is not installed. Install with: pip install rag-forge-evaluator[ragas]"
             raise ImportError(msg) from exc
 
-        llm_wrapper = RagForgeRagasLLM(judge=self._judge, max_tokens=self._max_tokens)
+        llm_wrapper = RagForgeRagasLLM(
+            judge=self._judge,
+            max_tokens=self._max_tokens,
+            refusal_aware=self._refusal_aware,
+        )
         embeddings_wrapper = RagForgeRagasEmbeddings(provider=self._embeddings_provider)
 
         data = {

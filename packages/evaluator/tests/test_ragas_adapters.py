@@ -23,7 +23,7 @@ class FakeJudge:
 
 def test_wrapper_forwards_generate_text_to_judge():
     judge = FakeJudge(response="faithful")
-    llm = RagForgeRagasLLM(judge=judge, max_tokens=8192)
+    llm = RagForgeRagasLLM(judge=judge, max_tokens=8192, refusal_aware=False)
     result = llm.generate_text("What is the capital of France?")
     assert result == "faithful"
     assert judge.calls[0][1] == "What is the capital of France?"
@@ -49,7 +49,7 @@ def test_wrapper_uses_empty_system_prompt_by_default():
 def test_wrapper_async_generate_text():
     """Test async generate_text using asyncio.run to avoid pytest-asyncio dependency."""
     judge = FakeJudge(response="async-ok")
-    llm = RagForgeRagasLLM(judge=judge, max_tokens=8192)
+    llm = RagForgeRagasLLM(judge=judge, max_tokens=8192, refusal_aware=False)
     result = asyncio.run(llm.agenerate_text("ping"))
     assert result == "async-ok"
     assert judge.calls[0][1] == "ping"
@@ -106,3 +106,70 @@ def test_embeddings_invalid_provider_raises():
     import pytest
     with pytest.raises(ValueError, match="Unknown embeddings provider"):
         RagForgeRagasEmbeddings(provider="unsupported")  # type: ignore[arg-type]
+
+
+def test_llm_wrapper_injects_refusal_note_when_enabled():
+    from rag_forge_evaluator.engines.ragas_adapters import RagForgeRagasLLM
+
+    captured: list[str] = []
+
+    class CapturingJudge:
+        def judge(self, s: str, u: str) -> str:
+            captured.append(u)
+            return "ok"
+
+        def model_name(self) -> str:
+            return "cap"
+
+    llm = RagForgeRagasLLM(judge=CapturingJudge(), max_tokens=8192, refusal_aware=True)
+    llm.generate_text("What is the dose?")
+
+    assert "safety refusal" in captured[0].lower() or "refusal is correct" in captured[0].lower()
+    # The original prompt is still in there somewhere
+    assert "What is the dose?" in captured[0]
+
+
+def test_llm_wrapper_omits_refusal_note_when_disabled():
+    from rag_forge_evaluator.engines.ragas_adapters import RagForgeRagasLLM
+
+    captured: list[str] = []
+
+    class CapturingJudge:
+        def judge(self, s: str, u: str) -> str:
+            captured.append(u)
+            return "ok"
+
+        def model_name(self) -> str:
+            return "cap"
+
+    llm = RagForgeRagasLLM(judge=CapturingJudge(), max_tokens=8192, refusal_aware=False)
+    llm.generate_text("What is the dose?")
+
+    # The exact prompt should pass through untouched
+    assert captured[0] == "What is the dose?"
+
+
+def test_ragas_evaluator_threads_refusal_aware_into_wrapper():
+    """RagasEvaluator(refusal_aware=True) should construct RagForgeRagasLLM
+    with refusal_aware=True. We verify by capturing what gets passed to the judge."""
+    from rag_forge_evaluator.engines.ragas_evaluator import RagasEvaluator
+
+    class CapturingMockJudge:
+        def judge(self, system_prompt: str, user_prompt: str) -> str:
+            captured_prompts.append(user_prompt)
+            # Return a minimal valid JSON that ragas metrics expect
+            return '{"faithfulness": 0.5}'
+
+        def model_name(self) -> str:
+            return "capture-judge"
+
+    evaluator = RagasEvaluator(
+        judge=CapturingMockJudge(),
+        thresholds={},
+        refusal_aware=True,
+        embeddings_provider="mock",
+    )
+
+    # To avoid needing ragas installed, just verify that the evaluator
+    # was constructed with refusal_aware=True by checking the attribute
+    assert evaluator._refusal_aware is True

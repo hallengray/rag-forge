@@ -221,6 +221,7 @@ class AuditOrchestrator:
                 judge=judge,
                 thresholds=self.config.thresholds,
                 progress=self._progress,
+                refusal_aware=self.config.refusal_aware,
             )
 
             # 2a. Print banner + confirm (no-op for NullProgressReporter + assume_yes).

@@ -33,5 +33,5 @@ warn_unused_configs = true
 
 # Optional integrations installed as extras — stubs not available
 [[tool.mypy.overrides]]
-module = ["anthropic.*", "cohere.*", "sentence_transformers.*", "bm25s.*", "jinja2.*", "presidio_analyzer.*", "ragas.*", "deepeval.*", "datasets.*", "redis.*", "playwright.*"]
+module = ["anthropic.*", "cohere.*", "sentence_transformers.*", "bm25s.*", "jinja2.*", "presidio_analyzer.*", "ragas.*", "deepeval.*", "datasets.*", "redis.*", "playwright.*", "PIL.*", "rag_forge_evaluator.*"]
 ignore_missing_imports = true

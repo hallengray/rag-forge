@@ -13,9 +13,15 @@ test is most useful on a pinned CI runner. Locally, expect up to 0.5%
 pixel drift to be tolerated.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from rag_forge_evaluator.engine import EvaluationResult
 
 # Module-level importorskip — if playwright or pillow are missing, the
 # whole module is skipped cleanly without contributing failures.
@@ -27,7 +33,7 @@ BASELINE_DIR = Path(__file__).parent / "fixtures" / "visual_baseline"
 BASELINE_PATH = BASELINE_DIR / "audit_report_baseline.png"
 
 
-def _make_deterministic_report():
+def _make_deterministic_report() -> EvaluationResult:
     """Build the same EvaluationResult the test_report_generator tests use
     so we can reuse the shape without re-defining it here."""
     from rag_forge_evaluator.engine import (
@@ -73,7 +79,7 @@ def _make_deterministic_report():
 
 
 @pytest.mark.visual
-def test_audit_report_visual_matches_baseline(tmp_path):
+def test_audit_report_visual_matches_baseline(tmp_path: Path) -> None:
     from playwright.sync_api import sync_playwright
     from PIL import Image, ImageChops
     from rag_forge_evaluator.report.generator import generate_html

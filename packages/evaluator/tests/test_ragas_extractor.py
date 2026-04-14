@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from rag_forge_evaluator.engine import EvaluationSample, SkipRecord
+from rag_forge_evaluator.engine import EvaluationSample
 from rag_forge_evaluator.engines.ragas_evaluator import (
     RagasEvaluator,
     _extract_ragas_score,

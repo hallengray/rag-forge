@@ -5,7 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rag_forge_evaluator.engines.ragas_adapters import RagForgeRagasLLM, RagForgeRagasEmbeddings
+from rag_forge_evaluator.engines.ragas_adapters import (
+    RagForgeRagasEmbeddings,
+    RagForgeRagasLLM,
+)
 
 
 class FakeJudge:
@@ -103,7 +106,6 @@ def test_embeddings_voyage_provider_calls_voyage_client():
 
 
 def test_embeddings_invalid_provider_raises():
-    import pytest
     with pytest.raises(ValueError, match="Unknown embeddings provider"):
         RagForgeRagasEmbeddings(provider="unsupported")  # type: ignore[arg-type]
 
@@ -150,26 +152,17 @@ def test_llm_wrapper_omits_refusal_note_when_disabled():
 
 
 def test_ragas_evaluator_threads_refusal_aware_into_wrapper():
-    """RagasEvaluator(refusal_aware=True) should construct RagForgeRagasLLM
-    with refusal_aware=True. We verify by capturing what gets passed to the judge."""
+    """RagasEvaluator(refusal_aware=True) should store the flag so the
+    wrapper it later constructs honors it. We verify by inspecting the
+    stored attribute — avoids needing real ragas installed."""
     from rag_forge_evaluator.engines.ragas_evaluator import RagasEvaluator
-
-    class CapturingMockJudge:
-        def judge(self, system_prompt: str, user_prompt: str) -> str:
-            captured_prompts.append(user_prompt)
-            # Return a minimal valid JSON that ragas metrics expect
-            return '{"faithfulness": 0.5}'
-
-        def model_name(self) -> str:
-            return "capture-judge"
+    from rag_forge_evaluator.judge.mock_judge import MockJudge
 
     evaluator = RagasEvaluator(
-        judge=CapturingMockJudge(),
+        judge=MockJudge(),
         thresholds={},
         refusal_aware=True,
         embeddings_provider="mock",
     )
 
-    # To avoid needing ragas installed, just verify that the evaluator
-    # was constructed with refusal_aware=True by checking the attribute
     assert evaluator._refusal_aware is True

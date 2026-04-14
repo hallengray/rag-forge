@@ -21,10 +21,11 @@ class TestCreateEvaluator:
     def test_ragas_not_installed_raises_on_evaluate(self) -> None:
         # The ragas import is deferred to evaluate() so the wrapper module
         # (and its _extract_ragas_score helper) can be imported and unit-
-        # tested without the optional dep installed.
+        # tested without the optional dep installed. v0.2.0: a judge is now
+        # required — pass MockJudge() so we reach the deferred ragas import.
         from rag_forge_evaluator.engine import EvaluationSample
 
-        evaluator = create_evaluator("ragas")
+        evaluator = create_evaluator("ragas", judge=MockJudge())
         with pytest.raises(ImportError):
             evaluator.evaluate([EvaluationSample(query="q", contexts=["c"], response="r")])
 

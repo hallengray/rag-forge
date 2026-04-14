@@ -21,7 +21,7 @@ def create_evaluator(
         )
     if engine == "ragas":
         from rag_forge_evaluator.engines.ragas_evaluator import RagasEvaluator
-        return RagasEvaluator(thresholds=thresholds)
+        return RagasEvaluator(judge=judge, thresholds=thresholds)
     if engine == "deepeval":
         from rag_forge_evaluator.engines.deepeval_evaluator import DeepEvalEvaluator
         return DeepEvalEvaluator(thresholds=thresholds)

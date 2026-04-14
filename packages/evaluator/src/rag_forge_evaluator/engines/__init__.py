@@ -23,6 +23,12 @@ def create_evaluator(
         )
     if engine == "ragas":
         from rag_forge_evaluator.engines.ragas_evaluator import RagasEvaluator
+        if judge is None:
+            # Default the ragas path to MockJudge when no explicit judge is
+            # supplied. This matches the llm-judge branch above and prevents
+            # a late, opaque "judge is None" failure from inside evaluate().
+            from rag_forge_evaluator.judge.mock_judge import MockJudge
+            judge = MockJudge()
         return RagasEvaluator(judge=judge, thresholds=thresholds, refusal_aware=refusal_aware)
     if engine == "deepeval":
         from rag_forge_evaluator.engines.deepeval_evaluator import DeepEvalEvaluator

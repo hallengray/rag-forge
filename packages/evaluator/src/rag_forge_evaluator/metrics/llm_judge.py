@@ -97,11 +97,13 @@ _DEFAULT_THRESHOLDS: dict[str, float] = {
 }
 
 
-_STANDARD_METRIC_TYPES = (
-    FaithfulnessMetric,
-    ContextRelevanceMetric,
-    AnswerRelevanceMetric,
-    HallucinationMetric,
+_STANDARD_METRIC_TYPES: frozenset[type[MetricEvaluator]] = frozenset(
+    {
+        FaithfulnessMetric,
+        ContextRelevanceMetric,
+        AnswerRelevanceMetric,
+        HallucinationMetric,
+    }
 )
 
 
@@ -115,17 +117,20 @@ def _default_metrics() -> list[MetricEvaluator]:
 
 
 def _are_standard_metrics(metrics: list[MetricEvaluator]) -> bool:
-    """Return True iff every metric in the list is one of the four standard types.
+    """Return True iff ``metrics`` is exactly the four default evaluators.
 
-    This is used to decide whether to use the combined single-call path. If
-    ``_default_metrics()`` has been monkey-patched (e.g. by the partial-report
-    tests), the stored instances will not be of the standard types and this
-    function returns False, routing through the per-metric path instead so the
-    injected evaluators are actually called.
+    Uses ``type(m) is ...`` (exact-class check) rather than ``isinstance``
+    so subclasses that override ``evaluate_sample`` do NOT get silently
+    rerouted into the combined single-call path — subclasses have custom
+    logic the combined path cannot replicate. Also enforces that each
+    standard class appears exactly once (set equality on the type list)
+    so duplicates like ``[FaithfulnessMetric(), FaithfulnessMetric()]``
+    correctly fall through to the per-metric path.
     """
     if len(metrics) != len(_STANDARD_METRIC_TYPES):
         return False
-    return all(isinstance(m, _STANDARD_METRIC_TYPES) for m in metrics)
+    seen_types = {type(m) for m in metrics}
+    return seen_types == _STANDARD_METRIC_TYPES
 
 
 def _determine_root_cause(
@@ -363,28 +368,39 @@ class LLMJudgeEvaluator(EvaluatorInterface):
                 if result.skipped:
                     sample_skipped += 1
 
-            worst_metric = min(sample_metric_scores, key=sample_metric_scores.get)  # type: ignore[arg-type]
-            thresholds_map = {
-                name: self._thresholds.get(name, _DEFAULT_THRESHOLDS.get(name, 0.80))
-                for name in metric_names
-            }
-            root_cause = _determine_root_cause(sample_metric_scores, thresholds_map)
+            # If every metric was skipped (e.g. the judge response was
+            # unparseable for this sample), do not emit a normal SampleResult
+            # with misleading 0.0 scores or pollute scoring_modes_count with
+            # a fake "standard" classification. The per-metric outcomes list
+            # already carries the skip signal for aggregation; progress is
+            # still reported so the CLI reflects what happened.
+            all_skipped = sample_skipped == len(metric_names)
 
-            mode_key = scoring_mode if scoring_mode is not None else "standard"
-            scoring_modes_count[mode_key] = scoring_modes_count.get(mode_key, 0) + 1
-
-            sample_results.append(
-                SampleResult(
-                    query=sample.query,
-                    response=sample.response,
-                    metrics=sample_metric_scores,
-                    worst_metric=worst_metric,
-                    root_cause=root_cause,
-                    sample_id=sample.sample_id,
-                    scoring_mode=scoring_mode,
-                    refusal_justification=refusal_justification,
+            if not all_skipped:
+                worst_metric = min(
+                    sample_metric_scores, key=sample_metric_scores.get  # type: ignore[arg-type]
                 )
-            )
+                thresholds_map = {
+                    name: self._thresholds.get(name, _DEFAULT_THRESHOLDS.get(name, 0.80))
+                    for name in metric_names
+                }
+                root_cause = _determine_root_cause(sample_metric_scores, thresholds_map)
+
+                mode_key = scoring_mode if scoring_mode is not None else "standard"
+                scoring_modes_count[mode_key] = scoring_modes_count.get(mode_key, 0) + 1
+
+                sample_results.append(
+                    SampleResult(
+                        query=sample.query,
+                        response=sample.response,
+                        metrics=sample_metric_scores,
+                        worst_metric=worst_metric,
+                        root_cause=root_cause,
+                        sample_id=sample.sample_id,
+                        scoring_mode=scoring_mode,
+                        refusal_justification=refusal_justification,
+                    )
+                )
 
             self._progress.sample_scored(
                 index=i,

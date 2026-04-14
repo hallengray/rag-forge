@@ -158,7 +158,11 @@ class AuditOrchestrator:
         when the user picked an Anthropic-native stack.
         """
         if config.evaluator_engine == "ragas":
-            judge = config.judge_model
+            # Normalize None → "mock" so programmatic configs that leave
+            # judge_model unset (matching the old default path where
+            # _create_judge constructs MockJudge) don't trip this allowlist
+            # before we ever reach the judge factory.
+            judge = config.judge_model if config.judge_model is not None else "mock"
             if judge not in ("openai", "gpt-4o", "claude", "mock"):
                 msg = (
                     f"--evaluator ragas does not support --judge {judge!r}. "

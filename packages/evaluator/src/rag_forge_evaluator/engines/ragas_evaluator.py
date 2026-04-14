@@ -152,6 +152,11 @@ class RagasEvaluator(EvaluatorInterface):
                 embeddings=embeddings_wrapper,
             )
         except Exception as exc:
+            # Whole-batch ragas crash: every sample x metric pair is a skip.
+            # samples_evaluated still reflects what we *attempted* so the
+            # report can honestly say "12 samples submitted, 0 metrics
+            # scored, 48 skip records"; passed is False because nothing
+            # was actually validated.
             for sample in samples:
                 for metric_name in _METRIC_NAMES:
                     skipped_samples.append(
@@ -165,7 +170,7 @@ class RagasEvaluator(EvaluatorInterface):
             return EvaluationResult(
                 metrics=[],
                 overall_score=0.0,
-                samples_evaluated=0,
+                samples_evaluated=len(samples),
                 passed=False,
                 skipped_samples=skipped_samples,
             )
@@ -196,11 +201,20 @@ class RagasEvaluator(EvaluatorInterface):
             )
 
         overall = sum(m.score for m in aggregated) / len(aggregated) if aggregated else 0.0
+        # A run with any skipped metrics is NOT passing, even if every
+        # extracted metric cleared its threshold. Silent partial success
+        # was the v0.1.3 pathology we set out to kill.
+        all_metrics_scored = len(aggregated) == len(_METRIC_NAMES)
+        passed = (
+            all_metrics_scored
+            and not skipped_samples
+            and all(m.passed for m in aggregated)
+        )
         return EvaluationResult(
             metrics=aggregated,
             overall_score=round(overall, 4),
             samples_evaluated=len(samples),
-            passed=bool(aggregated) and all(m.passed for m in aggregated),
+            passed=passed,
             skipped_samples=skipped_samples,
         )
 

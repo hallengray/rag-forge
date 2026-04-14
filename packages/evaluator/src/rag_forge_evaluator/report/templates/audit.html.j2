@@ -933,6 +933,7 @@
         <svg width="160" height="80" viewBox="0 0 160 80" style="margin-top:10px;display:block">
           <line x1="0" y1="20" x2="160" y2="20" stroke="#e5e0d0" stroke-width="1" stroke-dasharray="2,3"/>
           <line x1="0" y1="50" x2="160" y2="50" stroke="#e5e0d0" stroke-width="1" stroke-dasharray="2,3"/>
+          {% if history_points %}
           <polyline
             points="{%- for p in history_points -%}{{ p.x }},{{ p.y }}{% if not loop.last %} {% endif %}{%- endfor -%}"
             fill="none"
@@ -948,7 +949,11 @@
           <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#fff" stroke="#9a7b2e" stroke-width="2"/>
           {% endif %}
           {%- endfor -%}
+          {% else %}
+          <text x="80" y="44" text-anchor="middle" fill="#9a7b2e" font-family="system-ui" font-size="10">First run — no history yet</text>
+          {% endif %}
         </svg>
+        {% if history_points %}
         <div class="sparkline-labels-row">
           {%- for p in history_points -%}
           <span>{{ p.label }}</span>
@@ -956,6 +961,7 @@
         </div>
         {% if history_delta_display %}
         <div class="sparkline-delta">▲ {{ history_delta_display }}</div>
+        {% endif %}
         {% endif %}
       </div>
       <div class="overall-panel">
@@ -1160,7 +1166,7 @@
         </div>
         {% endif %}
         <div class="sample-scores">
-          {%- for metric_name, score in sample.scores.items() -%}
+          {%- for metric_name, score in (sample.scores or {}).items() -%}
           <div class="sample-score">
             <span>{{ metric_name }}</span>
             <span>{{ "%.2f" | format(score) }}</span>

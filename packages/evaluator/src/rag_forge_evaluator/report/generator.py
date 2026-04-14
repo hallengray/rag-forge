@@ -321,11 +321,14 @@ def _build_compliance(
         "across all scored samples; skipped samples are excluded from aggregates."
     )
     data_handling_html = (
-        "Queries, responses, and retrieved contexts are processed in-memory only. "
-        "No sample data is persisted beyond the audit run. "
-        "Evaluation inputs are transmitted to the configured judge endpoint "
-        "under the operator's API key and subject to that provider's data policy. "
-        "This report contains no personally-identifiable information."
+        "Queries, responses, and retrieved contexts are processed during the audit run. "
+        "If HTML, JSON, or PDF reports are generated, the sample content is persisted "
+        "into those artifacts — operators running against regulated datasets should "
+        "treat the report directory as containing the original evaluation material. "
+        "Evaluation inputs are transmitted to the configured judge endpoint under the "
+        "operator's API key and subject to that provider's data policy. This report "
+        "does not automatically redact personally-identifiable information; if the "
+        "input samples contain PII, the rendered reports will too."
     )
     return {
         "method_html": method_html,
@@ -670,26 +673,43 @@ class ReportGenerator:
         rmm_level: RMMLevel,
         trends: dict[str, str] | None = None,
         sample_results: list[SampleResult] | None = None,
+        *,
+        project_name: str = "RAG-Forge Audit",
+        project_description: str = "",
+        evaluator_name: str = "llm-judge",
+        judge_model_display: str = "",
+        report_number: str | None = None,
+        report_date: str | None = None,
     ) -> Path:
         """Generate a standalone HTML report and write it to disk.
 
         Delegates context-building and rendering to the module-level
         ``generate_html`` function so both entry points stay in sync.
+        Forwards caller-supplied metadata (project name, evaluator engine,
+        judge model, report number/date) through to the template instead
+        of hardcoding defaults — callers that previously relied on the
+        hardcoded ``"RAG-Forge Audit"`` / ``"llm-judge"`` placeholders
+        still work because those remain the defaults.
+
+        ``rmm_level``, ``trends``, and ``sample_results`` are kept in the
+        signature for backward compatibility with audit.py. The module-level
+        ``generate_html`` recomputes RMM from the result's metrics (which
+        matches what audit.py already passes in) and reads sample_results
+        directly from ``result.sample_results``. The ``trends`` parameter
+        is accepted but not currently rendered — the new template uses
+        the historical sparkline instead.
         """
+        _ = rmm_level, trends, sample_results  # superseded by new template
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Map the positional ``rmm_level`` into the new keyword-based function.
-        # The new function re-computes RMM from the result's metric scores, so
-        # we don't need to pass rmm_level explicitly — but we do need to honour
-        # the caller's intent. We accept whatever level they pass in by
-        # overriding the computed one if they differ. For simplicity, and because
-        # audit.py always passes the scorer's output anyway, we just call
-        # generate_html and let it re-score. The result is identical in practice.
         html = generate_html(
             result,
-            project_name="RAG-Forge Audit",
-            evaluator_name="llm-judge",
-            judge_model_display="",
+            project_name=project_name,
+            project_description=project_description,
+            evaluator_name=evaluator_name,
+            judge_model_display=judge_model_display,
+            report_number=report_number,
+            report_date=report_date,
         )
 
         output_path = self.output_dir / "audit-report.html"

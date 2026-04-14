@@ -14,18 +14,13 @@ Public surface
 from __future__ import annotations
 
 import json
-import math
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
-from rag_forge_evaluator.engine import EvaluationResult, SampleResult, SkipRecord
+from rag_forge_evaluator.engine import EvaluationResult, SampleResult  # noqa: TC001
 from rag_forge_evaluator.maturity import RMM_CRITERIA, RMMLevel, RMMScorer
-
-if TYPE_CHECKING:
-    pass  # CostSummary is not a real type yet; we accept None or any duck-typed object
 
 # ---------------------------------------------------------------------------
 # Jinja environment — loaded once at import time.

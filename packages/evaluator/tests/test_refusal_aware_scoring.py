@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from rag_forge_evaluator.engine import EvaluationSample
 from rag_forge_evaluator.metrics.llm_judge import LLMJudgeEvaluator
 

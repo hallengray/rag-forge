@@ -28,7 +28,7 @@ def _voyageai_installed() -> bool:
     function so tests can monkeypatch it without importing the real SDK.
     """
     try:
-        import voyageai  # noqa: F401, PLC0415
+        import voyageai  # noqa: F401
     except ImportError:
         return False
     return True

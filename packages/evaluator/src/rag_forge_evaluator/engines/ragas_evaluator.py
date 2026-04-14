@@ -70,7 +70,7 @@ def _extract_ragas_score(result: object, name: str) -> float:
     raise ValueError(f"could not extract ragas score for metric {name!r}")
 
 
-def _auto_select_provider(judge: "JudgeProvider | None") -> EmbeddingProvider:
+def _auto_select_provider(judge: JudgeProvider | None) -> EmbeddingProvider:
     """Pick embeddings provider from judge type.
 
     - ClaudeJudge (model contains 'claude') → voyage
@@ -91,7 +91,7 @@ def _auto_select_provider(judge: "JudgeProvider | None") -> EmbeddingProvider:
 class RagasEvaluator(EvaluatorInterface):
     def __init__(
         self,
-        judge: "JudgeProvider | None" = None,
+        judge: JudgeProvider | None = None,
         thresholds: dict[str, float] | None = None,
         max_tokens: int = 8192,
         embeddings_provider: EmbeddingProvider | None = None,
@@ -116,9 +116,9 @@ class RagasEvaluator(EvaluatorInterface):
             raise ValueError(msg)
 
         try:
-            from datasets import Dataset  # noqa: PLC0415
-            from ragas import evaluate as ragas_evaluate  # noqa: PLC0415
-            from ragas.metrics import (  # noqa: PLC0415
+            from datasets import Dataset
+            from ragas import evaluate as ragas_evaluate
+            from ragas.metrics import (
                 answer_relevancy,
                 context_precision,
                 context_recall,
@@ -151,7 +151,7 @@ class RagasEvaluator(EvaluatorInterface):
                 llm=llm_wrapper,
                 embeddings=embeddings_wrapper,
             )
-        except Exception as exc:  # noqa: BLE001 — whole-batch ragas crash path
+        except Exception as exc:
             for sample in samples:
                 for metric_name in _METRIC_NAMES:
                     skipped_samples.append(

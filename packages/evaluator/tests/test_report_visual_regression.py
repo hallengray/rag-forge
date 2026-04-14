@@ -80,8 +80,9 @@ def _make_deterministic_report() -> EvaluationResult:
 
 @pytest.mark.visual
 def test_audit_report_visual_matches_baseline(tmp_path: Path) -> None:
-    from playwright.sync_api import sync_playwright
     from PIL import Image, ImageChops
+    from playwright.sync_api import sync_playwright
+
     from rag_forge_evaluator.report.generator import generate_html
 
     report = _make_deterministic_report()

@@ -160,9 +160,10 @@ def test_ragas_claude_combo_errors_when_voyageai_missing(tmp_path: Path) -> None
         assume_yes=True,
     )
 
-    with patch("rag_forge_evaluator.audit._voyageai_installed", return_value=False):
-        with pytest.raises(ConfigurationError, match="ragas-voyage"):
-            AuditOrchestrator(config)
+    with patch("rag_forge_evaluator.audit._voyageai_installed", return_value=False), pytest.raises(
+        ConfigurationError, match="ragas-voyage"
+    ):
+        AuditOrchestrator(config)
 
 
 def test_audit_config_refusal_aware_default_on() -> None:

@@ -21,7 +21,6 @@ from rag_forge_evaluator.engine import EvaluationSample
 from rag_forge_evaluator.engines.ragas_evaluator import RagasEvaluator
 from rag_forge_evaluator.judge.mock_judge import MockJudge
 
-
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ragas_tiny_fixture.json"
 
 

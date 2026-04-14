@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from typing import Literal, Protocol, runtime_checkable
-
+from typing import Any, Literal, Protocol, runtime_checkable
 
 _REFUSAL_NOTE = (
     "NOTE: If the retrieved context lacks sufficient information to answer the question, "
@@ -82,19 +81,20 @@ class RagForgeRagasLLM:
 EmbeddingProvider = Literal["openai", "voyage", "mock"]
 
 
-def _openai_client():
+def _openai_client() -> Any:
     """Lazy-import the OpenAI client so unit tests don't require the SDK
     unless the openai provider is actually used. Wrapped in a function
     so tests can monkeypatch it."""
-    from openai import OpenAI  # noqa: PLC0415
+    from openai import OpenAI
+
     return OpenAI()
 
 
-def _voyage_client():
+def _voyage_client() -> Any:
     """Lazy-import the Voyage client. Raises ImportError if voyageai is
     not installed — users need the [ragas-voyage] extra."""
     try:
-        import voyageai  # noqa: PLC0415
+        import voyageai
     except ImportError as exc:  # pragma: no cover
         msg = (
             "Voyage embeddings requested but voyageai is not installed. "

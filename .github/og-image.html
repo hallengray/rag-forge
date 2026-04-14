@@ -4,10 +4,12 @@
   1200x630 is the canonical Open Graph spec used by Facebook/Twitter/LinkedIn
   and works fine on GitHub (which accepts up to 1280x640).
 
-  To regenerate after editing this file (no project devDeps required):
+  To regenerate after editing this file (no project devDeps required).
+  Pin the Playwright version so the install + run share the same package and
+  don't drift on a later @latest. Bump this version intentionally when needed.
 
-    npx -y playwright@latest install chromium
-    node -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:1200,height:630},deviceScaleFactor:2});const p=await c.newPage();await p.goto('file://'+process.cwd()+'/.github/og-image.html',{waitUntil:'networkidle'});await p.waitForTimeout(500);await p.screenshot({path:'.github/og-image.png'});await b.close();})()"
+    npx -y -p playwright@1.59.1 playwright install chromium
+    npx -y -p playwright@1.59.1 node -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:1200,height:630},deviceScaleFactor:2});const p=await c.newPage();await p.goto('file://'+process.cwd()+'/.github/og-image.html',{waitUntil:'networkidle'});await p.waitForTimeout(500);await p.screenshot({path:'.github/og-image.png'});await b.close();})()"
 
   Then upload the new PNG via repo Settings -> Social preview.
 -->

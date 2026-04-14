@@ -18,13 +18,13 @@
 
 ## Why RAG-Forge?
 
-Most RAG projects ship without evaluation, and most evaluation libraries don't help you build the pipeline. Nobody scores maturity — so teams don't know if they're at "a demo that sometimes works" or "a system you can put in front of customers."
+Most RAG projects ship without evaluation, and most evaluation libraries don't help you build the pipeline. Few tools score maturity end-to-end — so teams often don't know if they're at "a demo that sometimes works" or "a system you can put in front of customers."
 
 - **Building a RAG pipeline is easy. Knowing whether it works is hard.** RAG-Forge closes that loop.
 - **Eval is a first-class citizen, not an afterthought.** Every template ships with a golden set and an audit gate.
 - **The RAG Maturity Model (RMM-0 → RMM-5)** gives you a concrete scorecard for any RAG system — yours or someone else's.
 
-RAG-Forge is the only toolkit that scaffolds production-ready RAG pipelines, runs continuous evaluation as a CI/CD gate, and scores any existing system against a published maturity model.
+RAG-Forge is one of the few toolkits that scaffolds production-ready RAG pipelines, runs continuous evaluation as a CI/CD gate, and scores any existing system against a published maturity model — all in one CLI.
 
 ---
 
@@ -51,12 +51,16 @@ npm install -g @rag-forge/cli
 rag-forge init basic my-rag-project
 cd my-rag-project
 
+# Drop your documents into a folder of your choice (or use the example below)
+mkdir docs
+echo "RAG-Forge is a CLI for building and evaluating RAG pipelines." > docs/example.md
+
 rag-forge index --source ./docs
 rag-forge audit --golden-set eval/golden_set.json
 rag-forge assess --audit-report reports/audit-report.json
 ```
 
-Three commands to go from empty directory to a scored RAG system with a golden set and an audit report.
+From empty directory to a scored RAG system with a golden set and an audit report — in under a minute.
 
 ---
 
@@ -124,7 +128,7 @@ There are great tools in this space. Here's an honest look at where each fits.
 
 **Peer strengths worth knowing:**
 
-- **RAGAS** has deeper metric research and a large community. RAG-Forge's evaluator supports RAGAS metrics — run `rag-forge audit --metrics ragas` to use them directly.
+- **RAGAS** has deeper metric research and a large community. RAG-Forge's evaluator supports RAGAS as a backend — run `rag-forge audit --evaluator ragas` to use it directly.
 - **LangChain Eval** has the broadest ecosystem of integrations if you're already invested in LangChain.
 - **Giskard** has a strong general-purpose ML testing story beyond RAG.
 

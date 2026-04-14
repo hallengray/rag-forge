@@ -167,6 +167,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/core/dist/
+          skip-existing: true
 
       - name: Build rag-forge-evaluator
         working-directory: packages/evaluator
@@ -176,6 +177,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/evaluator/dist/
+          skip-existing: true
 
       - name: Build rag-forge-observability
         working-directory: packages/observability
@@ -185,3 +187,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/observability/dist/
+          skip-existing: true

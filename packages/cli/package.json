@@ -1,6 +1,6 @@
 {
   "name": "@rag-forge/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Framework-agnostic CLI toolkit for production-grade RAG pipelines with evaluation baked in",
   "author": "Femi Adedayo",
   "repository": {

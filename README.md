@@ -48,7 +48,8 @@ The RMM is the scoring framework at the heart of RAG-Forge. Run `rag-forge asses
 ```bash
 npm install -g @rag-forge/cli
 
-rag-forge init basic my-rag-project
+# Scaffold a project (use --directory to name the folder)
+rag-forge init basic --directory my-rag-project
 cd my-rag-project
 
 # Drop your documents into a folder of your choice (or use the example below)

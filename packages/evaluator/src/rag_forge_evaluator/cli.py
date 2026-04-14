@@ -54,6 +54,10 @@ def cmd_audit(args: argparse.Namespace) -> None:
     tracing.enable()
     tracer = tracing.get_tracer() if tracing.is_enabled() else None
 
+    # Compute refusal_aware from mutually-exclusive flags
+    strict = bool(getattr(args, "strict", False) or getattr(args, "no_refusal_aware_flag", False))
+    refusal_aware = not strict
+
     config = AuditConfig(
         input_path=Path(args.input) if args.input else None,
         golden_set_path=Path(args.golden_set) if args.golden_set else None,
@@ -67,6 +71,7 @@ def cmd_audit(args: argparse.Namespace) -> None:
         progress=StderrProgressReporter(),
         assume_yes=args.yes,
         on_judge_retry=_stderr_retry_notice,
+        refusal_aware=refusal_aware,
     )
 
     try:
@@ -301,6 +306,26 @@ def main() -> None:
     audit_parser.add_argument(
         "--yes", "-y", action="store_true",
         help="Skip the pre-run confirmation prompt. Required for non-interactive runs.",
+    )
+
+    # Refusal-aware flags (mutually exclusive group)
+    refusal_group = audit_parser.add_mutually_exclusive_group()
+    refusal_group.add_argument(
+        "--strict",
+        action="store_true",
+        help="Revert to v0.1.x scoring semantics. Safety refusals are penalized as non-answers.",
+    )
+    refusal_group.add_argument(
+        "--refusal-aware",
+        dest="refusal_aware_flag",
+        action="store_true",
+        help="Force refusal-aware scoring on (default behavior).",
+    )
+    refusal_group.add_argument(
+        "--no-refusal-aware",
+        dest="no_refusal_aware_flag",
+        action="store_true",
+        help="Alias for --strict.",
     )
 
     cost_parser = subparsers.add_parser("cost", help="Estimate pipeline costs")

@@ -1,0 +1,18 @@
+{
+  "samples": [
+    {
+      "sample_id": "fixture-001",
+      "query": "What is the capital of France?",
+      "contexts": ["France is a country in Europe. Its capital is Paris."],
+      "response": "The capital of France is Paris.",
+      "expected_answer": "Paris"
+    },
+    {
+      "sample_id": "fixture-002",
+      "query": "What is the population of Mars?",
+      "contexts": ["Mars is the fourth planet from the Sun."],
+      "response": "I cannot provide population information; the context does not contain it.",
+      "expected_answer": "unknown"
+    }
+  ]
+}

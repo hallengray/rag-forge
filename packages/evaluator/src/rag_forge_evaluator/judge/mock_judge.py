@@ -2,6 +2,20 @@
 import json
 
 _DEFAULT_RESPONSE = json.dumps({
+    # Combined-path fields (v0.2.0+) — consumed by LLMJudgeEvaluator when
+    # using the default four metrics. Scores chosen to comfortably clear
+    # all four default thresholds (faithfulness 0.85, answer_relevance 0.80,
+    # context_relevance 0.80, hallucination 0.95) so mock-judge CI runs
+    # exercise the "passing pipeline" code path.
+    "scoring_mode": "standard",
+    "refusal_justification": None,
+    "faithfulness": 0.9,
+    "answer_relevance": 0.88,
+    "context_relevance": 0.85,
+    "hallucination": 0.97,
+    # Legacy per-metric fields — consumed by the individual metric
+    # evaluators on the per-metric code path (used when a caller supplies
+    # a custom metrics list, e.g. the partial-report tests).
     "claims": [
         {"text": "claim 1", "supported": True},
         {"text": "claim 2", "supported": True},

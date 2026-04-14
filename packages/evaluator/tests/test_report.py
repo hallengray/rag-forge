@@ -30,13 +30,15 @@ class TestReportGenerator:
     def test_html_contains_rmm_badge(self, tmp_path: Path) -> None:
         path = ReportGenerator(output_dir=tmp_path).generate_html(_mock_result(), RMMLevel.TRUST)
         html = path.read_text(encoding="utf-8")
-        assert "RMM-3" in html
+        # New template uses "Level N — Name" format, not "RMM-N"
+        assert "Level" in html
         assert "Better Trust" in html
 
     def test_html_contains_metric_scores(self, tmp_path: Path) -> None:
         path = ReportGenerator(output_dir=tmp_path).generate_html(_mock_result(), RMMLevel.NAIVE)
         html = path.read_text(encoding="utf-8")
-        assert "faithfulness" in html
+        # Metric names are title-cased in the new template ("Faithfulness")
+        assert "Faithfulness" in html
         assert "PASS" in html
         assert "FAIL" in html
 

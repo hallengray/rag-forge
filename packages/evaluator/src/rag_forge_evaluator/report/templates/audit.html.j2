@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG-Forge Audit Report — {{ project_name }}</title>
+  <style>
+    /* ── Color palette ───────────────────────────────────────────────── */
+    :root {
+      --color-fg: #111;
+      --color-body: #333;
+      --color-muted: #666;
+      --color-soft: #999;
+      --color-rule: #d4d4d4;
+      --color-pale: #e5e5e5;
+      --color-surface: #fafafa;
+      --color-pass: #1a5f1a;
+      --color-pass-soft: #4ade80;
+      --color-pass-bg: #f7faf7;
+      --color-pass-border: #c8d9c8;
+      --color-fail: #9a1111;
+      --color-fail-soft: #dc2626;
+      --color-accent: #9a7b2e;
+      --color-accent-bg: #faf8f3;
+      --color-accent-border: #d4cfc0;
+      --font-serif: Georgia, "Times New Roman", serif;
+      --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    /* ── Base ────────────────────────────────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-serif);
+      color: var(--color-fg);
+      background: #fff;
+      margin: 0 auto;
+      padding: 56px 72px;
+      max-width: 940px;
+      overflow-wrap: anywhere;
+      hyphens: auto;
+      line-height: 1.6;
+    }
+
+    /* ── Section spacing ─────────────────────────────────────────────── */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      font-weight: 600;
+      margin-bottom: 14px;
+      font-family: var(--font-sans);
+    }
+
+    /* ── Manifest strip ──────────────────────────────────────────────── */
+    .manifest-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--color-pale);
+      border-bottom: 1px solid var(--color-pale);
+      font-family: var(--font-sans);
+    }
+
+    .manifest-cell {
+      padding: 14px 16px;
+      border-right: 1px solid var(--color-pale);
+    }
+
+    .manifest-cell:last-child {
+      border-right: none;
+    }
+
+    .manifest-cell-label {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--color-soft);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .manifest-cell-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-fg);
+      margin-top: 4px;
+    }
+
+    /* ── RMM hero ────────────────────────────────────────────────────── */
+    .rmm-hero {
+      background: var(--color-accent-bg);
+      border: 1px solid var(--color-accent-border);
+      border-left: 6px solid var(--color-accent);
+      padding: 28px 32px;
+      margin-bottom: 32px;
+    }
+
+    .rmm-hero-grid {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 28px;
+      align-items: flex-start;
+    }
+
+    .rmm-kicker {
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--color-accent);
+      font-family: var(--font-sans);
+      font-weight: 700;
+    }
+
+    .rmm-title {
+      font-size: 36px;
+      font-weight: 400;
+      font-style: italic;
+      margin-top: 8px;
+      color: var(--color-fg);
+    }
+
+    .rmm-explanation {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--color-body);
+      margin-top: 14px;
+      max-width: 420px;
+    }
+
+    /* ── Sparkline panel ─────────────────────────────────────────────── */
+    .sparkline-panel {
+      padding: 0 24px;
+      border-left: 1px solid var(--color-accent-border);
+      border-right: 1px solid var(--color-accent-border);
+      min-width: 160px;
+    }
+
+    .sparkline-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--color-muted);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .sparkline-labels-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--color-soft);
+      font-family: var(--font-sans);
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+
+    .sparkline-delta {
+      font-size: 10px;
+      color: var(--color-pass);
+      font-family: var(--font-sans);
+      margin-top: 6px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* ── Overall score panel ─────────────────────────────────────────── */
+    .overall-panel {
+      text-align: center;
+    }
+
+    .overall-kicker {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--color-muted);
+      font-family: var(--font-sans);
+      font-weight: 600;
+    }
+
+    .overall-score {
+      font-size: 52px;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--color-fg);
+      line-height: 1;
+      margin-top: 6px;
+    }
+
+    .overall-sub {
+      font-size: 11px;
+      color: var(--color-muted);
+      margin-top: 6px;
+      font-family: var(--font-sans);
+    }
+
+    /* ── RMM ladder ──────────────────────────────────────────────────── */
+    .ladder-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      font-family: var(--font-sans);
+    }
+
+    .ladder-cell {
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .ladder-cell-number {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .ladder-cell-name {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .ladder-cell-state {
+      font-size: 9px;
+      margin-top: 3px;
+    }
+
+    .ladder-cell--cleared {
+      background: #f3f3f3;
+      border-top: 3px solid #16a34a;
+    }
+
+    .ladder-cell--cleared .ladder-cell-number { color: var(--color-muted); }
+    .ladder-cell--cleared .ladder-cell-name { font-weight: 600; }
+    .ladder-cell--cleared .ladder-cell-state { color: #16a34a; }
+
+    .ladder-cell--current {
+      background: var(--color-accent-bg);
+      border-top: 3px solid var(--color-accent);
+      box-shadow: 0 0 0 2px var(--color-accent);
+    }
+
+    .ladder-cell--current .ladder-cell-number { color: var(--color-accent); font-weight: 700; }
+    .ladder-cell--current .ladder-cell-name { font-weight: 700; }
+    .ladder-cell--current .ladder-cell-state { color: var(--color-accent); }
+
+    .ladder-cell--next {
+      background: var(--color-surface);
+      border-top: 3px solid var(--color-rule);
+    }
+
+    .ladder-cell--next .ladder-cell-number { color: var(--color-soft); }
+    .ladder-cell--next .ladder-cell-name { color: var(--color-muted); }
+    .ladder-cell--next .ladder-cell-state { color: var(--color-soft); }
+
+    .ladder-cell--future {
+      background: var(--color-surface);
+      border-top: 3px solid var(--color-rule);
+    }
+
+    .ladder-cell--future .ladder-cell-number { color: var(--color-soft); }
+    .ladder-cell--future .ladder-cell-name { color: var(--color-soft); }
+    .ladder-cell--future .ladder-cell-state { color: var(--color-soft); }
+
+    /* ── TL;DR callout ───────────────────────────────────────────────── */
+    .tldr-box {
+      background: #fef9f2;
+      border: 2px solid var(--color-accent);
+      border-radius: 4px;
+      padding: 22px 26px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .tldr-tag {
+      position: absolute;
+      top: -11px;
+      left: 24px;
+      background: var(--color-accent);
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 4px 12px;
+      font-family: var(--font-sans);
+      font-weight: 700;
+    }
+
+    .tldr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-top: 4px;
+    }
+
+    .tldr-col-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .tldr-col-label--working { color: var(--color-pass); }
+    .tldr-col-label--fixing { color: var(--color-fail); }
+
+    .tldr-box ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--color-body);
+    }
+
+    .tldr-next {
+      border-top: 1px solid #e5d9b8;
+      margin-top: 18px;
+      padding-top: 16px;
+      font-family: var(--font-sans);
+    }
+
+    .tldr-next-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-accent);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .tldr-next-body {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-fg);
+    }
+
+    /* ── Metric table ────────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-sans);
+      font-size: 13px;
+    }
+
+    th {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-soft);
+      font-weight: 600;
+      border-bottom: 1px solid var(--color-pale);
+    }
+
+    td {
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--color-pale);
+      color: var(--color-body);
+      vertical-align: top;
+    }
+
+    .status-pass {
+      color: var(--color-pass);
+      font-weight: 700;
+    }
+
+    .status-fail {
+      color: var(--color-fail);
+      font-weight: 700;
+    }
+
+    .metric-name {
+      font-weight: 600;
+      color: var(--color-fg);
+    }
+
+    .metric-desc {
+      font-size: 11px;
+      color: var(--color-soft);
+      margin-top: 2px;
+    }
+
+    /* ── Cost block ──────────────────────────────────────────────────── */
+    .cost-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .cost-cell {
+      background: var(--color-surface);
+      border: 1px solid var(--color-pale);
+      padding: 14px 16px;
+    }
+
+    .cost-cell-label {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-soft);
+      font-weight: 600;
+      font-family: var(--font-sans);
+    }
+
+    .cost-cell-value {
+      font-size: 20px;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--color-fg);
+      margin-top: 4px;
+    }
+
+    .cost-cell-sub {
+      font-size: 10px;
+      color: var(--color-soft);
+      margin-top: 2px;
+      font-family: var(--font-sans);
+    }
+
+    .cost-tokens-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-family: var(--font-sans);
+    }
+
+    .cost-token-block {
+      background: var(--color-surface);
+      border: 1px solid var(--color-pale);
+      padding: 12px 14px;
+    }
+
+    .cost-token-label {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-soft);
+      font-weight: 600;
+    }
+
+    .cost-token-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-fg);
+      margin-top: 3px;
+    }
+
+    .cost-token-sub {
+      font-size: 10px;
+      color: var(--color-soft);
+      margin-top: 2px;
+    }
+
+    .cost-projection {
+      background: var(--color-surface);
+      border: 1px solid var(--color-pale);
+      padding: 12px 16px;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--color-body);
+    }
+
+    .cost-note {
+      font-size: 10px;
+      color: var(--color-soft);
+      margin-top: 8px;
+      font-family: var(--font-sans);
+    }
+
+    /* ── Refusals block ──────────────────────────────────────────────── */
+    .refusals-block {
+      background: var(--color-pass-bg);
+      border: 1px solid var(--color-pass-border);
+      border-left: 6px solid var(--color-pass);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+
+    .refusals-stat {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      color: var(--color-muted);
+      margin-bottom: 14px;
+    }
+
+    .refusal-warning {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid var(--color-fail-soft);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--color-fail);
+      font-family: var(--font-sans);
+    }
+
+    .refusal-case {
+      border-bottom: 1px solid var(--color-pass-border);
+      padding: 12px 0;
+    }
+
+    .refusal-case:last-child {
+      border-bottom: none;
+    }
+
+    .refusal-case-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-muted);
+      font-weight: 600;
+    }
+
+    .refusal-case-query {
+      font-size: 13px;
+      color: var(--color-fg);
+      margin-top: 4px;
+    }
+
+    .refusal-case-justification {
+      font-size: 11px;
+      color: var(--color-muted);
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    /* ── Worst case block ────────────────────────────────────────────── */
+    .worst-case-block {
+      background: #fff8f8;
+      border: 1px solid #f0d0d0;
+      border-left: 6px solid var(--color-fail-soft);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+
+    .worst-case-id {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-fg);
+    }
+
+    .worst-case-metrics {
+      font-size: 12px;
+      color: var(--color-muted);
+      font-family: var(--font-sans);
+      margin-top: 4px;
+    }
+
+    .worst-case-diagnosis {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--color-body);
+      margin-top: 12px;
+    }
+
+    /* ── Per-sample cards ────────────────────────────────────────────── */
+    .sample-card {
+      border: 1px solid var(--color-rule);
+      margin-bottom: 12px;
+    }
+
+    .sample-card > summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      background: var(--color-surface);
+      font-family: var(--font-sans);
+      user-select: none;
+      list-style: none;
+    }
+
+    .sample-card > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .sample-card > summary::after {
+      content: "▸";
+      color: var(--color-soft);
+      font-size: 11px;
+      transition: transform 0.15s;
+    }
+
+    .sample-card[open] > summary::after {
+      transform: rotate(90deg);
+    }
+
+    .sample-id {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-fg);
+    }
+
+    .sample-mode {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--color-soft);
+      font-family: var(--font-sans);
+      background: var(--color-pale);
+      padding: 2px 8px;
+      border-radius: 2px;
+    }
+
+    .sample-body {
+      padding: 16px;
+      font-size: 13px;
+      color: var(--color-body);
+    }
+
+    .sample-query,
+    .sample-response {
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    .sample-refusal-note {
+      background: #fff8e8;
+      border-left: 3px solid var(--color-accent);
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--color-body);
+      margin-bottom: 10px;
+    }
+
+    .sample-contexts {
+      margin-bottom: 10px;
+    }
+
+    .sample-contexts-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--color-soft);
+      font-weight: 600;
+      font-family: var(--font-sans);
+      margin-bottom: 4px;
+    }
+
+    .sample-contexts ol {
+      padding-left: 18px;
+      font-size: 11px;
+      color: var(--color-muted);
+      line-height: 1.5;
+    }
+
+    .sample-scores {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .sample-score {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: var(--color-surface);
+      border: 1px solid var(--color-pale);
+      padding: 4px 10px;
+      font-family: var(--font-sans);
+      font-size: 11px;
+    }
+
+    .sample-score span:first-child {
+      color: var(--color-muted);
+    }
+
+    .sample-score span:last-child {
+      font-weight: 600;
+      color: var(--color-fg);
+    }
+
+    .sample-wall-time {
+      font-size: 10px;
+      color: var(--color-soft);
+      font-family: var(--font-sans);
+      margin-top: 8px;
+    }
+
+    /* ── Skipped table ───────────────────────────────────────────────── */
+    .skipped-section {
+      background: #fffbf0;
+      border: 1px solid #e8e0c0;
+      padding: 20px 24px;
+    }
+
+    .section-note {
+      font-size: 12px;
+      color: var(--color-muted);
+      margin-bottom: 14px;
+      font-family: var(--font-sans);
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    /* ── Compliance footer ───────────────────────────────────────────── */
+    .compliance-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .compliance-title {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      font-family: var(--font-sans);
+      font-weight: 600;
+    }
+
+    .compliance-subtitle {
+      font-size: 12px;
+      color: var(--color-soft);
+      margin-top: 4px;
+      font-family: var(--font-sans);
+    }
+
+    .compliance-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-bottom: 24px;
+      font-family: var(--font-sans);
+    }
+
+    .compliance-col-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .compliance-col-body {
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--color-body);
+    }
+
+    .regulatory-block {
+      background: var(--color-surface);
+      border: 1px solid var(--color-pale);
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--color-body);
+    }
+
+    .regulatory-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .attestation-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+      font-family: var(--font-sans);
+    }
+
+    .attestation-cell {
+      border-top: 1px solid var(--color-fg);
+      padding-top: 10px;
+    }
+
+    .attestation-cell-label {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--color-soft);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .attestation-cell-value {
+      font-size: 14px;
+      color: var(--color-fg);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .attestation-cell-sub {
+      font-size: 10px;
+      color: var(--color-muted);
+    }
+
+    .compliance-limitations {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      line-height: 1.7;
+      color: var(--color-muted);
+      padding-top: 14px;
+      border-top: 1px solid var(--color-pale);
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 720px) {
+      body { padding: 32px 20px; }
+      .manifest-strip { grid-template-columns: repeat(2, 1fr) !important; }
+      .rmm-hero-grid { grid-template-columns: 1fr !important; }
+      .tldr-grid { grid-template-columns: 1fr !important; }
+      .cost-grid { grid-template-columns: 1fr 1fr !important; }
+      .compliance-two-col { grid-template-columns: 1fr !important; }
+      .attestation-grid { grid-template-columns: 1fr 1fr !important; }
+      .ladder-strip { grid-template-columns: repeat(3, 1fr) !important; }
+    }
+
+    /* ── Print ───────────────────────────────────────────────────────── */
+    @media print {
+      body {
+        padding: 0;
+        max-width: none;
+      }
+
+      details[open] > *:not(summary),
+      details:not([open]) > *:not(summary) {
+        display: block !important;
+      }
+
+      details > summary {
+        list-style: none;
+        cursor: default;
+      }
+
+      details > summary::-webkit-details-marker { display: none; }
+
+      .sample-card,
+      .section {
+        page-break-inside: avoid;
+      }
+
+      h2, h3 { page-break-after: avoid; }
+
+      @page {
+        size: A4;
+        margin: 20mm 18mm 22mm 18mm;
+        @bottom-right {
+          content: counter(page) " / " counter(pages);
+          font-family: var(--font-sans);
+          font-size: 9pt;
+          color: var(--color-muted);
+        }
+        @bottom-left {
+          content: "RAG-Forge Audit Report";
+          font-family: var(--font-sans);
+          font-size: 9pt;
+          color: var(--color-muted);
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ 1. HEADER STRIP ══════════════════════════════════════════════ -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:1px solid var(--color-rule);margin-bottom:28px;font-family:var(--font-sans)">
+    <div>
+      <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--color-muted);font-weight:600">RAG-Forge</div>
+      <div style="font-size:10px;color:var(--color-soft);margin-top:3px">Retrieval Maturity Audit · v{{ rag_forge_version }}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--color-muted);font-weight:600">Report № {{ report_number }}</div>
+      <div style="font-size:20px;font-weight:500;margin-top:6px;color:var(--color-fg)">{{ report_date }}</div>
+      <div style="font-size:11px;color:var(--color-soft);margin-top:3px">{{ report_cycle }} · {{ report_time_utc }}</div>
+    </div>
+  </div>
+
+  <!-- ══ 2. TITLE BLOCK ═══════════════════════════════════════════════ -->
+  <div style="text-align:center;border-bottom:3px double var(--color-fg);padding-bottom:30px;margin-bottom:28px">
+    <div style="font-size:42px;font-weight:400;font-style:italic;letter-spacing:0.5px">{{ project_name }}</div>
+    <div style="font-size:13px;color:var(--color-muted);margin-top:12px;font-family:var(--font-sans);letter-spacing:1px">{{ project_description | upper }}</div>
+  </div>
+
+  <!-- ══ 3. RUN MANIFEST STRIP ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="manifest-strip">
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">Evaluator</div>
+        <div class="manifest-cell-value">{{ evaluator_name }}</div>
+      </div>
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">Judge Model</div>
+        <div class="manifest-cell-value">{{ judge_model_display }}</div>
+      </div>
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">Samples</div>
+        <div class="manifest-cell-value">{{ sample_count }} · {{ skipped_count }} skipped</div>
+      </div>
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">Wall Time</div>
+        <div class="manifest-cell-value">{{ wall_time_display }}</div>
+      </div>
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">Cost</div>
+        <div class="manifest-cell-value">{{ cost_display }}</div>
+      </div>
+      <div class="manifest-cell">
+        <div class="manifest-cell-label">RAG-Forge</div>
+        <div class="manifest-cell-value">{{ rag_forge_version }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 4. RMM HERO CALLOUT ══════════════════════════════════════════ -->
+  <div class="rmm-hero">
+    <div class="rmm-hero-grid">
+      <div>
+        <div class="rmm-kicker">Retrieval Maturity Model</div>
+        <div class="rmm-title">Level {{ rmm_level_number }} — {{ rmm_level_name }}</div>
+        <div class="rmm-explanation">{{ rmm_explanation_html | safe }}</div>
+      </div>
+      <div class="sparkline-panel">
+        <div class="sparkline-label">HISTORY</div>
+        <svg width="160" height="80" viewBox="0 0 160 80" style="margin-top:10px;display:block">
+          <line x1="0" y1="20" x2="160" y2="20" stroke="#e5e0d0" stroke-width="1" stroke-dasharray="2,3"/>
+          <line x1="0" y1="50" x2="160" y2="50" stroke="#e5e0d0" stroke-width="1" stroke-dasharray="2,3"/>
+          {% if history_points %}
+          <polyline
+            points="{%- for p in history_points -%}{{ p.x }},{{ p.y }}{% if not loop.last %} {% endif %}{%- endfor -%}"
+            fill="none"
+            stroke="#9a7b2e"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          {%- for p in history_points -%}
+          {% if loop.last %}
+          <circle cx="{{ p.x }}" cy="{{ p.y }}" r="4" fill="#9a7b2e" stroke="#9a7b2e" stroke-width="2"/>
+          {% else %}
+          <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#fff" stroke="#9a7b2e" stroke-width="2"/>
+          {% endif %}
+          {%- endfor -%}
+          {% else %}
+          <text x="80" y="44" text-anchor="middle" fill="#9a7b2e" font-family="system-ui" font-size="10">First run — no history yet</text>
+          {% endif %}
+        </svg>
+        {% if history_points %}
+        <div class="sparkline-labels-row">
+          {%- for p in history_points -%}
+          <span>{{ p.label }}</span>
+          {%- endfor -%}
+        </div>
+        {% if history_delta_display %}
+        <div class="sparkline-delta">▲ {{ history_delta_display }}</div>
+        {% endif %}
+        {% endif %}
+      </div>
+      <div class="overall-panel">
+        <div class="overall-kicker">OVERALL</div>
+        <div class="overall-score">{{ overall_score_display }}</div>
+        <div class="overall-sub">{{ metrics_passed_count }} of {{ metrics_total_count }} passing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 5. RMM LADDER ════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">The Maturity Ladder</div>
+    <div class="ladder-strip">
+      {%- for level in ladder_levels -%}
+      <div class="ladder-cell ladder-cell--{{ level.state }}">
+        <div class="ladder-cell-number">Level {{ level.number }}</div>
+        <div class="ladder-cell-name">{{ level.name }}</div>
+        <div class="ladder-cell-state">
+          {%- if level.state == "cleared" -%}✓ CLEARED
+          {%- elif level.state == "current" -%}● CURRENT
+          {%- elif level.state == "next" -%}NEXT
+          {%- else -%}—
+          {%- endif -%}
+        </div>
+      </div>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  <!-- ══ 6. EXECUTIVE SUMMARY ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Executive Summary</div>
+    <div style="font-size:14px;line-height:1.8;color:var(--color-body)">
+      {{ executive_summary_html | safe }}
+    </div>
+  </div>
+
+  <!-- ══ 7. TL;DR CALLOUT ════════════════════════════════════════════ -->
+  <div class="tldr-box">
+    <div class="tldr-tag">TL;DR · ACTION REQUIRED</div>
+    <div class="tldr-grid">
+      <div>
+        <div class="tldr-col-label tldr-col-label--working">✓ What's working</div>
+        <ul>
+          {%- for item in tldr.working -%}
+          <li>{{ item }}</li>
+          {%- endfor -%}
+        </ul>
+      </div>
+      <div>
+        <div class="tldr-col-label tldr-col-label--fixing">✗ What needs fixing</div>
+        <ul>
+          {%- for item in tldr.needs_fixing -%}
+          <li>{{ item }}</li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    </div>
+    <div class="tldr-next">
+      <div class="tldr-next-label">→ Priority next step</div>
+      <div class="tldr-next-body">{{ tldr.priority_next_step_html | safe }}</div>
+    </div>
+  </div>
+
+  <!-- ══ 8. METRIC BREAKDOWN TABLE ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Metric Breakdown</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>What it measures</th>
+          <th>Score</th>
+          <th>Target</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for row in metric_rows -%}
+        <tr>
+          <td>
+            <div class="metric-name">{{ row.name }}</div>
+          </td>
+          <td>
+            <div class="metric-desc">{{ row.description }}</div>
+          </td>
+          <td>{{ row.score }}</td>
+          <td>{{ row.target }}</td>
+          <td>
+            <span class="{% if row.status == 'PASS' %}status-pass{% else %}status-fail{% endif %}">
+              {{ row.status }}
+            </span>
+          </td>
+        </tr>
+        {%- endfor -%}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ 9. COST SUMMARY BLOCK ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Cost Summary</div>
+    <div class="cost-grid">
+      <div class="cost-cell">
+        <div class="cost-cell-label">Total spend</div>
+        <div class="cost-cell-value">{{ cost.total }}</div>
+        <div class="cost-cell-sub">{{ cost.provider_display }}</div>
+      </div>
+      <div class="cost-cell">
+        <div class="cost-cell-label">Per sample</div>
+        <div class="cost-cell-value">{{ cost.per_sample }}</div>
+        <div class="cost-cell-sub">{{ sample_count }} samples</div>
+      </div>
+      <div class="cost-cell">
+        <div class="cost-cell-label">CI projection</div>
+        <div class="cost-cell-value">{{ cost.projection_monthly_ci }}</div>
+        <div class="cost-cell-sub">est. monthly CI cost</div>
+      </div>
+    </div>
+    <div class="cost-tokens-row">
+      <div class="cost-token-block">
+        <div class="cost-token-label">Input tokens</div>
+        <div class="cost-token-value">{{ cost.input_tokens }}</div>
+        <div class="cost-token-sub">{{ cost.input_cost }} · {{ cost.input_pct }}% of spend</div>
+      </div>
+      <div class="cost-token-block">
+        <div class="cost-token-label">Output tokens</div>
+        <div class="cost-token-value">{{ cost.output_tokens }}</div>
+        <div class="cost-token-sub">{{ cost.output_cost }} · {{ cost.output_pct }}% of spend</div>
+      </div>
+    </div>
+    <div class="cost-projection">
+      <strong>100-sample projection:</strong> {{ cost.projection_100_samples }}
+    </div>
+    {% if cost.note %}
+    <div class="cost-note">{{ cost.note }}</div>
+    {% endif %}
+  </div>
+
+  <!-- ══ 10. SAFETY REFUSALS BLOCK ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Safety Refusals</div>
+    <div class="refusals-block">
+      <div class="refusals-stat">
+        {{ refusals.count }} refusal{{ "s" if refusals.count != 1 else "" }}
+        out of {{ refusals.total }} samples
+        ({{ refusals.rate_percent }}% rate)
+      </div>
+      {% if refusals.warn %}
+      <div class="refusal-warning">
+        <strong>High refusal rate detected.</strong> {{ refusals.warning_text }}
+      </div>
+      {% endif %}
+      {% if refusals.cases %}
+        {%- for case in refusals.cases -%}
+        <div class="refusal-case">
+          <div class="refusal-case-id">{{ case.case_id }}</div>
+          <div class="refusal-case-query">{{ case.query }}</div>
+          <div class="refusal-case-justification">{{ case.justification }}</div>
+        </div>
+        {%- endfor -%}
+      {% else %}
+        <div style="font-size:12px;color:var(--color-soft);font-family:var(--font-sans)">No safety refusals recorded in this run.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══ 11. WORST PERFORMING CASE ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Worst Performing Case</div>
+    <div class="worst-case-block">
+      <div class="worst-case-id">{{ worst_case.sample_id }}</div>
+      <div class="worst-case-metrics">{{ worst_case.headline_metrics }}</div>
+      <div class="worst-case-diagnosis">{{ worst_case.diagnosis_html | safe }}</div>
+    </div>
+  </div>
+
+  <!-- ══ 12. PER-SAMPLE DETAIL ════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Per-Sample Detail ({{ samples | length }} samples)</div>
+    {%- for sample in samples -%}
+    <details class="sample-card" open>
+      <summary>
+        <span class="sample-id">{{ sample.sample_id }}</span>
+        <span class="sample-mode">{{ sample.scoring_mode | default('standard') }}</span>
+      </summary>
+      <div class="sample-body">
+        <div class="sample-query"><strong>Query:</strong> {{ sample.query }}</div>
+        <div class="sample-response"><strong>Response:</strong> {{ sample.response }}</div>
+        {% if sample.refusal_justification %}
+        <div class="sample-refusal-note"><strong>Refusal justification:</strong> {{ sample.refusal_justification }}</div>
+        {% endif %}
+        {% if sample.contexts %}
+        <div class="sample-contexts">
+          <div class="sample-contexts-label">Retrieved contexts</div>
+          <ol>
+            {%- for ctx in sample.contexts -%}
+            <li>{{ ctx }}</li>
+            {%- endfor -%}
+          </ol>
+        </div>
+        {% endif %}
+        <div class="sample-scores">
+          {%- for metric_name, score in (sample.scores or {}).items() -%}
+          <div class="sample-score">
+            <span>{{ metric_name }}</span>
+            <span>{{ "%.2f" | format(score) }}</span>
+          </div>
+          {%- endfor -%}
+        </div>
+        <div class="sample-wall-time">Wall time: {{ sample.wall_time_display }}</div>
+      </div>
+    </details>
+    {%- endfor -%}
+  </div>
+
+  <!-- ══ 13. SKIPPED SAMPLES (conditional) ════════════════════════════ -->
+  {% if skipped_samples %}
+  <div class="section skipped-section">
+    <div class="section-label">Skipped Samples</div>
+    <p class="section-note">These samples could not be scored. Broken infrastructure is visible rather than hidden behind zero scores.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Sample</th>
+          <th>Metric</th>
+          <th>Exception</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for s in skipped_samples -%}
+        <tr>
+          <td class="mono">{{ s.sample_id }}</td>
+          <td>{{ s.metric_name }}</td>
+          <td class="mono">{{ s.exception_type }}</td>
+          <td>{{ s.reason }}</td>
+        </tr>
+        {%- endfor -%}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- ══ 14. COMPLIANCE FOOTER ════════════════════════════════════════ -->
+  <div style="border-top:3px double var(--color-fg);padding-top:28px;margin-top:8px">
+    <div class="compliance-header">
+      <div class="compliance-title">Compliance &amp; Attestation</div>
+      <div class="compliance-subtitle">This section establishes the audit's reproducibility, method disclosure, and regulatory alignment.</div>
+    </div>
+
+    <div class="compliance-two-col">
+      <div>
+        <div class="compliance-col-label">Method Disclosure</div>
+        <div class="compliance-col-body">{{ compliance.method_html | safe }}</div>
+      </div>
+      <div>
+        <div class="compliance-col-label">Data Handling</div>
+        <div class="compliance-col-body">{{ compliance.data_handling_html | safe }}</div>
+      </div>
+    </div>
+
+    <div class="regulatory-block">
+      <div class="regulatory-label">Regulatory Alignment</div>
+      <div>{{ compliance.regulatory_html | safe }}</div>
+    </div>
+
+    <div class="attestation-grid">
+      <div class="attestation-cell">
+        <div class="attestation-cell-label">Authored By</div>
+        <div class="attestation-cell-value" style="font-family:var(--font-serif);font-style:italic">{{ compliance.authored_by }}</div>
+        <div class="attestation-cell-sub">v{{ rag_forge_version }} · automated audit</div>
+      </div>
+      <div class="attestation-cell">
+        <div class="attestation-cell-label">Issued</div>
+        <div class="attestation-cell-value">{{ compliance.issued_date }}</div>
+        <div class="attestation-cell-sub">{{ compliance.issued_utc_time }}</div>
+      </div>
+      <div class="attestation-cell">
+        <div class="attestation-cell-label">Valid Until</div>
+        <div class="attestation-cell-value">{{ compliance.valid_until }}</div>
+        <div class="attestation-cell-sub">or 90 days from issuance</div>
+      </div>
+    </div>
+
+    <div class="compliance-limitations">
+      <strong style="color:var(--color-fg)">Limitations &amp; disclaimer.</strong>
+      {{ compliance.limitations_html | safe }}
+      <br><br>
+      Generated by <strong>{{ compliance.authored_by }}</strong> ·
+      <span style="font-family:var(--font-mono)">{{ compliance.github_url }}</span> ·
+      Report № {{ report_number }} · {{ compliance.page_total_display }}
+    </div>
+  </div>
+
+</body>
+</html>

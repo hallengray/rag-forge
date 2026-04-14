@@ -8,7 +8,8 @@ from rag_forge_evaluator.report.generator import ReportGenerator
 
 
 class TestEnhancedReport:
-    def test_html_contains_radar_chart(self) -> None:
+    def test_html_contains_svg_element(self) -> None:
+        """New template renders a sparkline SVG (polyline/circle), not a radar polygon."""
         with tempfile.TemporaryDirectory() as tmpdir:
             gen = ReportGenerator(output_dir=tmpdir)
             result = EvaluationResult(
@@ -20,10 +21,16 @@ class TestEnhancedReport:
             )
             path = gen.generate_html(result, RMMLevel.TRUST)
             html = path.read_text(encoding="utf-8")
+            # The new audit.html.j2 template contains an SVG sparkline
             assert "<svg" in html
-            assert "polygon" in html
 
-    def test_html_contains_trend_arrows(self) -> None:
+    def test_html_trends_param_accepted_without_error(self) -> None:
+        """ReportGenerator.generate_html must accept a ``trends`` kwarg without raising.
+
+        The new template does not render trend arrows — trends are no longer part
+        of the audit.html.j2 design — but the ReportGenerator signature still
+        accepts the parameter for backward compatibility.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             gen = ReportGenerator(output_dir=tmpdir)
             result = EvaluationResult(
@@ -31,9 +38,9 @@ class TestEnhancedReport:
                 overall_score=0.90, samples_evaluated=5, passed=True,
             )
             trends = {"faithfulness": "\u2191"}
+            # Must not raise; return value is a valid HTML file path
             path = gen.generate_html(result, RMMLevel.TRUST, trends=trends)
-            html = path.read_text(encoding="utf-8")
-            assert "\u2191" in html
+            assert path.exists()
 
     def test_html_contains_per_sample_section(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

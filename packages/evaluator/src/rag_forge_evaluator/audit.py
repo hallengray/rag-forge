@@ -23,6 +23,17 @@ from rag_forge_evaluator.progress import NullProgressReporter, ProgressReporter,
 from rag_forge_evaluator.report.generator import ReportGenerator
 
 
+def _voyageai_installed() -> bool:
+    """Importability probe for voyageai. Extracted as a module-level
+    function so tests can monkeypatch it without importing the real SDK.
+    """
+    try:
+        import voyageai  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 class ConfigurationError(ValueError):
     """Raised when an AuditConfig combination is invalid or unsafe to run."""
 
@@ -71,6 +82,12 @@ class AuditConfig:
     progress: ProgressReporter | None = None
     assume_yes: bool = False
     on_judge_retry: OnRetryCallback | None = None
+    refusal_aware: bool = True
+    ragas_embeddings_provider: str | None = None  # None = auto-select from judge type
+    # NOTE: per-call max_tokens forwarding to the ragas LLM wrapper is a
+    # v0.2.1 follow-up. The underlying judge's own default max_tokens
+    # (ClaudeJudge: 4096, configurable via RAG_FORGE_JUDGE_MAX_TOKENS env
+    # var) applies during ragas runs.
 
 
 @dataclass
@@ -135,32 +152,33 @@ class AuditOrchestrator:
     def _validate_config(config: AuditConfig) -> None:
         """Reject unsafe combinations before any judge calls happen.
 
-        Currently guards against ``--evaluator ragas --judge claude`` (or any
-        non-OpenAI/non-mock judge), because the RAGAS engine uses its own
-        internal OpenAI-backed judge regardless of the top-level ``--judge``
-        flag. Letting the run start would silently use a different model than
-        the user requested and would fail with an opaque auth error on
-        customers who don't have an OPENAI_API_KEY.
-
-        Full claude-judge propagation through RAGAS is tracked for v0.1.2 via
-        a LangchainLLMWrapper around ClaudeJudge.
+        In v0.2.0 we permit ``--evaluator ragas --judge claude`` — the
+        RAGAS engine now injects a RagForgeRagasLLM wrapper that honors
+        the configured judge end-to-end. The remaining constraint is
+        that Claude + ragas requires Voyage embeddings (installed via
+        the ``[ragas-voyage]`` extra), because ragas needs an embeddings
+        provider and we do not want to silently fall back to OpenAI
+        when the user picked an Anthropic-native stack.
         """
         if config.evaluator_engine == "ragas":
-            judge = config.judge_model
-            # Mock is *not* allowed here even though it costs $0: the ragas
-            # engine internally calls OpenAI regardless of --judge, so a mock
-            # config would skip the cost gate and confirmation prompt while
-            # still spending real OpenAI tokens. Fail loudly instead.
-            if judge not in ("openai", "gpt-4o"):
+            # Normalize None → "mock" so programmatic configs that leave
+            # judge_model unset (matching the old default path where
+            # _create_judge constructs MockJudge) don't trip this allowlist
+            # before we ever reach the judge factory. Also reuse
+            # _KNOWN_JUDGE_ALIASES as the single source of truth — if
+            # _create_judge() accepts an alias, ragas must too.
+            judge = config.judge_model if config.judge_model is not None else "mock"
+            if judge not in _KNOWN_JUDGE_ALIASES:
                 msg = (
-                    f"--evaluator ragas does not honor --judge {judge!r}. "
-                    "The RAGAS engine uses its own OpenAI-backed judge internally, "
-                    "so the requested judge would be silently ignored AND would "
-                    "still spend real OpenAI tokens (skipping the cost gate). "
-                    "Either:\n"
-                    "  1. Use --evaluator llm-judge (which honors --judge), or\n"
-                    "  2. Set OPENAI_API_KEY and pass --judge openai.\n"
-                    "Full claude-judge propagation through RAGAS is tracked for v0.1.2."
+                    f"--evaluator ragas does not support --judge {judge!r}. "
+                    f"Expected one of: {', '.join(repr(a) for a in _KNOWN_JUDGE_ALIASES)}."
+                )
+                raise ConfigurationError(msg)
+            if judge in ("claude", "claude-sonnet") and not _voyageai_installed():
+                msg = (
+                    "--evaluator ragas --judge claude requires Voyage embeddings. "
+                    "Install with: pip install rag-forge-evaluator[ragas-voyage]\n"
+                    "Alternatively, pass --judge openai to use OpenAI embeddings."
                 )
                 raise ConfigurationError(msg)
 
@@ -212,22 +230,13 @@ class AuditOrchestrator:
                 judge=judge,
                 thresholds=self.config.thresholds,
                 progress=self._progress,
+                refusal_aware=self.config.refusal_aware,
             )
 
             # 2a. Print banner + confirm (no-op for NullProgressReporter + assume_yes).
             metric_names = evaluator.supported_metrics()
-            # The RAGAS engine ignores the configured judge entirely and uses
-            # its own internal gpt-4o-mini regardless of --judge / --judge-model.
-            # Use the actual model the evaluator will invoke for the estimate
-            # so the banner is honest about cost. The validator in
-            # _validate_config has already restricted ragas to --judge openai,
-            # so we only have to handle that one engine specially here.
-            if self.config.evaluator_engine == "ragas":
-                estimate_model = "gpt-4o-mini"
-                banner_judge_model = "gpt-4o-mini (RAGAS internal — judge override ignored)"
-            else:
-                estimate_model = judge.model_name()
-                banner_judge_model = judge.model_name()
+            estimate_model = judge.model_name()
+            banner_judge_model = judge.model_name()
             estimate = estimate_audit(
                 sample_count=len(samples),
                 metric_count=len(metric_names),

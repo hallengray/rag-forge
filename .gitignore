@@ -60,3 +60,10 @@ apps/*/.next
 apps/*/out
 apps/*/next-env.d.ts
 .vercel
+
+# Internal / working docs (not for public repo)
+handoff/
+docs/prd/
+
+# Binary product docs at repo root
+/*.docx

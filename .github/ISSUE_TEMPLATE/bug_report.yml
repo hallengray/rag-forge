@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a bug in RAG-Forge
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill out the fields below so we can reproduce and fix it quickly.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package affected
+      options:
+        - CLI (@rag-forge/cli)
+        - Core (rag-forge-core)
+        - Evaluator (rag-forge-evaluator)
+        - Observability (rag-forge-observability)
+        - MCP server (@rag-forge/mcp)
+        - Templates
+        - Docs site
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `rag-forge --version` or package version from `package.json` / `pyproject.toml`
+      placeholder: "0.1.3"
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Node.js / Python version
+      placeholder: "Node 20.11.0 / Python 3.11.7"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Docker
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong? What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Minimal steps to reproduce the issue.
+      placeholder: |
+        1. Run `rag-forge init basic`
+        2. ...
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Paste logs, stack traces, or error output. Will be rendered as a code block.
+
+        ⚠️ **Before submitting, please redact:** API keys, tokens, passwords, personal emails, IP addresses, customer names, and any other secrets or PII. Issues are public.
+      render: shell

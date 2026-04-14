@@ -1,4 +1,12 @@
-"""Aggregation must exclude skipped samples (Bug #8 fix)."""
+"""Aggregation must exclude skipped samples (Bug #8 fix).
+
+NOTE: These tests use the combined single-call path introduced in v0.2.0.
+Each judge call returns all four metric scores in one JSON object (or an
+empty string to simulate a parse failure). The old per-metric response
+format ({"score": 0.9} etc.) is no longer used on the default code path.
+"""
+import json
+
 from rag_forge_evaluator.engine import EvaluationSample
 from rag_forge_evaluator.metrics.llm_judge import LLMJudgeEvaluator
 
@@ -26,25 +34,30 @@ def _sample(query: str) -> EvaluationSample:
     )
 
 
-def _good(metric_field: str, value: float) -> str:
-    return '{"' + metric_field + '": ' + str(value) + "}"
+def _good_combined(
+    faithfulness: float = 0.9,
+    context_relevance: float = 0.9,
+    answer_relevance: float = 0.9,
+    hallucination: float = 0.9,
+) -> str:
+    """Build a combined-format judge response with all four metrics."""
+    return json.dumps({
+        "faithfulness": faithfulness,
+        "context_relevance": context_relevance,
+        "answer_relevance": answer_relevance,
+        "hallucination": hallucination,
+    })
 
 
 def test_aggregate_excludes_skipped_samples_from_mean() -> None:
-    """Two samples; second sample's metrics all parse-fail. Mean should be over sample 1 only."""
-    # LLMJudgeEvaluator default metric order:
-    # FaithfulnessMetric, ContextRelevanceMetric, AnswerRelevanceMetric, HallucinationMetric
-    # Sample 1: all four succeed with high scores.
-    # Sample 2: all four return empty string (parse fail).
+    """Two samples; second sample parse-fails. Mean should be over sample 1 only.
+
+    The combined path fires one judge call per sample. Sample 1 returns valid
+    combined JSON; sample 2 returns an empty string (parse failure).
+    """
     responses = [
-        _good("score", 0.9),               # sample1 faithfulness
-        _good("mean_score", 0.9),          # sample1 context_relevance
-        _good("overall_score", 0.9),       # sample1 answer_relevance
-        _good("hallucination_rate", 0.1),  # sample1 hallucination → score 0.9
-        "",                                 # sample2 faithfulness FAIL
-        "",                                 # sample2 context_relevance FAIL
-        "",                                 # sample2 answer_relevance FAIL
-        "",                                 # sample2 hallucination FAIL
+        _good_combined(),  # sample1 — all four metrics succeed at 0.9
+        "",                # sample2 — parse failure, all four metrics skipped
     ]
     judge = _ScriptedJudge(responses)
     evaluator = LLMJudgeEvaluator(judge=judge)
@@ -64,13 +77,7 @@ def test_aggregate_excludes_skipped_samples_from_mean() -> None:
 def test_aggregate_passes_when_all_real_scores_above_threshold() -> None:
     """Even with skips, a metric should pass if its scored samples meet threshold."""
     responses = [
-        _good("score", 0.9),
-        _good("mean_score", 0.9),
-        _good("overall_score", 0.9),
-        _good("hallucination_rate", 0.0),
-        "",
-        "",
-        "",
+        _good_combined(faithfulness=0.9, context_relevance=0.9, answer_relevance=0.9, hallucination=0.96),
         "",
     ]
     judge = _ScriptedJudge(responses)
@@ -84,8 +91,8 @@ def test_aggregate_passes_when_all_real_scores_above_threshold() -> None:
 
 
 def test_aggregate_marks_metric_failed_when_no_scored_samples() -> None:
-    """If every sample for a metric is skipped, the metric must report passed=False."""
-    responses = [""] * 8  # 2 samples * 4 metrics, all parse-fail
+    """If every sample parse-fails, every metric must report passed=False."""
+    responses = ["", ""]  # 2 samples, both parse-fail
     judge = _ScriptedJudge(responses)
     evaluator = LLMJudgeEvaluator(judge=judge)
     result = evaluator.evaluate([_sample("q1"), _sample("q2")])
@@ -98,16 +105,14 @@ def test_aggregate_marks_metric_failed_when_no_scored_samples() -> None:
 
 def test_missing_field_is_skipped_not_zero() -> None:
     """Per PearMedica forensic finding: when judge JSON parses but the expected
-    field is absent, the metric must be skipped — not treated as worst-case.
+    fields are absent, every metric must be skipped — not treated as worst-case.
+
+    The combined path treats a response with no recognised metric keys as a
+    full-sample skip (all four metrics skipped).
     """
-    # Valid JSON but missing the expected score keys.
-    bad_responses = [
-        '{"reason": "I cannot evaluate this"}',  # faithfulness missing 'score'
-        '{"reason": "no context provided"}',     # context_relevance missing 'mean_score'
-        '{"reason": "tangential"}',              # answer_relevance missing 'overall_score'
-        '{"reason": "cannot determine"}',        # hallucination missing 'hallucination_rate'
-    ]
-    judge = _ScriptedJudge(bad_responses)
+    # Valid JSON but missing all four metric keys.
+    bad_response = '{"reason": "I cannot evaluate this"}'
+    judge = _ScriptedJudge([bad_response])
     evaluator = LLMJudgeEvaluator(judge=judge)
     result = evaluator.evaluate([_sample("q1")])
 
@@ -121,20 +126,30 @@ def test_pearmedica_pollution_scenario() -> None:
     """Reproduce the exact pathology from the 2026-04-13 audit at smaller scale.
 
     19 samples with 27/76 parse failures dragged context_relevance to 0.063
-    when the real mean over the 4 scored samples was ~0.30. Verify the new
-    aggregation reports the real mean instead of the polluted one.
+    when the real mean over scored samples was ~0.30. Verify the new aggregation
+    reports the real mean instead of the polluted one.
+
+    In the combined path a parse failure drops all four metrics for that sample.
+    To test per-metric skipping (only context_relevance missing), we use JSON
+    that omits context_relevance on three of the four samples.
     """
-    # Build 4 samples. For context_relevance only, 3 parse-fail and 1 succeeds with mean_score=0.30.
-    # For other metrics, all 4 succeed with high scores.
     responses: list[str] = []
     for i in range(4):
-        responses.append(_good("score", 0.9))                # faithfulness
         if i == 0:
-            responses.append(_good("mean_score", 0.30))       # context_relevance succeeds
+            # Sample 0: all four fields present; context_relevance = 0.30
+            responses.append(_good_combined(
+                faithfulness=0.9,
+                context_relevance=0.30,
+                answer_relevance=0.9,
+                hallucination=0.95,
+            ))
         else:
-            responses.append("")                              # context_relevance fails
-        responses.append(_good("overall_score", 0.9))        # answer_relevance
-        responses.append(_good("hallucination_rate", 0.05))  # hallucination
+            # Samples 1-3: context_relevance field intentionally omitted
+            responses.append(json.dumps({
+                "faithfulness": 0.9,
+                "answer_relevance": 0.9,
+                "hallucination": 0.95,
+            }))
 
     judge = _ScriptedJudge(responses)
     evaluator = LLMJudgeEvaluator(judge=judge)

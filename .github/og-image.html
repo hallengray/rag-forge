@@ -1,11 +1,13 @@
 <!doctype html>
 <!--
-  Source for .github/og-image.png (1280x640 social preview).
+  Source for .github/og-image.png (1200x630 social preview).
+  1200x630 is the canonical Open Graph spec used by Facebook/Twitter/LinkedIn
+  and works fine on GitHub (which accepts up to 1280x640).
 
   To regenerate after editing this file (no project devDeps required):
 
     npx -y playwright@latest install chromium
-    node -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:1280,height:640},deviceScaleFactor:2});const p=await c.newPage();await p.goto('file://'+process.cwd()+'/.github/og-image.html',{waitUntil:'networkidle'});await p.waitForTimeout(500);await p.screenshot({path:'.github/og-image.png'});await b.close();})()"
+    node -e "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:1200,height:630},deviceScaleFactor:2});const p=await c.newPage();await p.goto('file://'+process.cwd()+'/.github/og-image.html',{waitUntil:'networkidle'});await p.waitForTimeout(500);await p.screenshot({path:'.github/og-image.png'});await b.close();})()"
 
   Then upload the new PNG via repo Settings -> Social preview.
 -->
@@ -25,8 +27,8 @@
       }
       html,
       body {
-        width: 1280px;
-        height: 640px;
+        width: 1200px;
+        height: 630px;
         background: #0f172a;
         font-family: "Inter", system-ui, sans-serif;
         color: #ffffff;
@@ -90,14 +92,24 @@
         padding-bottom: 18px;
       }
       .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-size: 18px;
         color: #94a3b8;
-        display: flex;
-        gap: 16px;
-        align-items: center;
       }
-      .foot .dot {
-        color: #475569;
+      .foot .cta {
+        background: #f97316;
+        color: #0f172a;
+        padding: 14px 22px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+      }
+      .foot .cta .ctaArrow {
+        margin-right: 8px;
       }
     </style>
   </head>
@@ -125,8 +137,7 @@
       </div>
       <div class="foot">
         <span>rag-forge-site.vercel.app</span>
-        <span class="dot">·</span>
-        <span>npm: @rag-forge/cli</span>
+        <span class="cta"><span class="ctaArrow">▶</span>npm i -g @rag-forge/cli</span>
       </div>
     </div>
   </body>

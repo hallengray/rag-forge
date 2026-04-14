@@ -69,7 +69,13 @@ class PDFGenerator:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
+            page.emulate_media(media="print")
             page.goto(f"file://{html_path.resolve()}")
-            page.pdf(path=str(pdf_path), format="A4", print_background=True)
+            page.pdf(
+                path=str(pdf_path),
+                format="A4",
+                print_background=True,
+                prefer_css_page_size=True,
+            )
             browser.close()
         return pdf_path

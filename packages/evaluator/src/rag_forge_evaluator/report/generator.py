@@ -715,6 +715,13 @@ class ReportGenerator:
 
         worst = _get_worst_samples(sample_results or [])
 
+        # Compute safety refusal rate — v0.2.0
+        samples_evaluated = result.samples_evaluated or 1  # guard against divide-by-zero
+        refusal_count = result.scoring_modes_count.get("safety_refusal", 0)
+        safety_refusal_rate = (
+            refusal_count / samples_evaluated if result.samples_evaluated else 0.0
+        )
+
         data = {
             "timestamp": datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "overall_score": result.overall_score,
@@ -735,7 +742,40 @@ class ReportGenerator:
                 }
                 for s in worst
             ],
+            # NEW in v0.2.0 — additive fields only
+            "skipped_samples": [
+                {
+                    "sample_id": s.sample_id,
+                    "metric_name": s.metric_name,
+                    "reason": s.reason,
+                    "exception_type": s.exception_type,
+                }
+                for s in result.skipped_samples
+            ],
+            "scoring_modes_count": dict(result.scoring_modes_count),
+            "safety_refusal_rate": safety_refusal_rate,
         }
+
+        # Add per-sample scoring mode and refusal justification
+        sample_results_list = sample_results or result.sample_results
+        if sample_results_list:
+            # We need to inject these into the worst_samples list
+            # But worst_samples is derived from top N worst, not all samples.
+            # We need to update the sample_results field instead.
+            # Actually, looking at the structure, we should add a full sample_results list.
+            data["sample_results"] = [
+                {
+                    "query": s.query,
+                    "response": s.response,
+                    "metrics": s.metrics,
+                    "worst_metric": s.worst_metric,
+                    "root_cause": s.root_cause,
+                    "sample_id": s.sample_id or "(unknown)",
+                    "scoring_mode": s.scoring_mode or "standard",
+                    "refusal_justification": s.refusal_justification,
+                }
+                for s in sample_results_list
+            ]
 
         output_path = self.output_dir / "audit-report.json"
         output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")

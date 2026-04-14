@@ -43,13 +43,13 @@ rag-forge index --source ./docs
 This parses, chunks, embeds, and writes your documents to the configured vector store.
 By default it uses the `mock` embedding provider — set `--embedding openai` (or `local`) for real embeddings.
 
-## 3. Query
+## 4. Query
 
 ```bash
 rag-forge query "What does RAG-Forge do?"
 ```
 
-## 4. Audit retrieval quality
+## 5. Audit retrieval quality
 
 ```bash
 rag-forge audit --golden-set eval/golden_set.json

@@ -1,0 +1,62 @@
+# Upgrading from v0.1.x to v0.2.x
+
+This page is the compressed version of the v0.2.2 CHANGELOG entry. Read it before you upgrade any pipeline that already has CI gates against RAG-Forge metrics, because **one of those metrics silently got more lenient in v0.2.x** and your gates will no longer catch the same regression magnitude they used to.
+
+## The short version
+
+- Upgrading from v0.1.x to v0.2.x, **Context Relevance scores go up by roughly 0.25 on average** against identical telemetry. This is a rubric change, not a product improvement. Your retrieval pipeline is unchanged — the measurement got more generous.
+- The other three metrics (Faithfulness, Answer Relevance, Hallucination) moved by +0.02 to +0.06 on the same audit, within normal LLM-judge noise. Treat them as lightly noisy, not rubric-changed.
+- **Re-baseline your CI gate thresholds** after your first v0.2.x run against a known-good pipeline.
+- Refusal-aware scoring is default-on in v0.2.x. Pipelines that correctly refuse unsafe questions will no longer be penalised. Pass `--strict` to revert to v0.1.x scoring.
+
+## Why Context Relevance moved
+
+The change is architectural, not a wording tweak.
+
+**v0.1.3 used per-chunk averaging.** The judge was asked to rate each retrieved chunk individually on a 1-5 scale:
+
+```text
+Rate each context chunk's relevance to the query on a 1-5 scale.
+Respond with ... "ratings": [{"chunk_index": 0, "score": 4, ...}], "mean_score": 0.8}
+The mean_score should be the average rating divided by 5 (normalized to 0.0-1.0).
+```
+
+Source: `packages/evaluator/src/rag_forge_evaluator/metrics/context_relevance.py` on the `v0.1.3` tag.
+
+**v0.2.0 switched to a holistic 0-1 score** as part of the combined-pass llm-judge refresh:
+
+```text
+- context_relevance (0-1): how relevant the retrieved context is to the query.
+```
+
+Source: `packages/evaluator/src/rag_forge_evaluator/metrics/llm_judge.py` in commit `330465f`.
+
+These two methodologies are not equivalent. For a hybrid retrieval pipeline that returns a mix of relevant and irrelevant chunks (the normal case), they disagree systematically:
+
+- **Per-chunk averaging** penalises the presence of irrelevant chunks. If 5 chunks are retrieved and 2 are relevant, the average is roughly `(5+5+1+1+1)/5/5 = 0.52`.
+- **Holistic scoring** typically rewards the presence of at least some relevant information. Given the same 5 chunks, a judge will often return 0.80+ because "the context does contain relevant information."
+
+Holistic scoring is the more lenient of the two. That's the +0.25 you're seeing.
+
+## What to do before you upgrade
+
+1. **Record your v0.1.x baseline.** Run your current audit under v0.1.3 against a known-good pipeline, save the JSON report. This is your "honest before" number.
+2. **Upgrade.** `pip install -U 'rag-forge-evaluator[ragas]'`. For Claude judge + Voyage embeddings, add the `[ragas-voyage]` extra.
+3. **Re-run the same audit.** The telemetry, golden set, and retrieval code should all be identical — only the RAG-Forge version has changed.
+4. **Compare the two JSON reports.** Expect Context Relevance to be roughly +0.25. Expect the other three metrics to be within +/-0.05. If any other metric moved by more than that, investigate before accepting — it might be a real regression.
+5. **Re-baseline your CI gates.** If your v0.1.x gate was `context_relevance >= 0.60`, you may need `>= 0.80` or higher under v0.2.x to catch the same regression magnitude. Set the new threshold against your known-good pipeline's v0.2.x score minus a small safety margin.
+6. **Annotate the re-baseline** in your repo somewhere your team will see it. Example: _"Context Relevance gate bumped 0.60 -> 0.80 on YYYY-MM-DD to account for RAG-Forge v0.2.x holistic rubric — see docs."_
+
+## What about the other metrics?
+
+Faithfulness, Answer Relevance, and Hallucination also moved to the combined-pass prompt in v0.2.0. Their wording is closer to the v0.1.x versions and their observed deltas against Cycle 2's telemetry were within LLM-judge variance (+0.02 to +0.06 average). We do not recommend re-baselining those three — treat the deltas as noise unless you see large per-case jumps on specific samples.
+
+Refusal-aware scoring adds a separate `safety_refusal` rubric with explicitly softer context-relevance criteria, but that path only fires when the judge classifies a sample as a refusal. In Cycle 3, zero samples were classified as refusals, so the drift documented above is entirely on the `standard` rubric — not a side effect of refusal mode.
+
+## Reverting to v0.1.x semantics
+
+v0.2.2 does not yet ship a way to pin the Context Relevance rubric back to v0.1.x per-chunk averaging. A `--rubric=strict-v1` flag is under design for a later release. If you need v0.1.x semantics before then, pin `rag-forge-evaluator<0.2.0` in your environment and accept that you will not receive the other v0.2.x fixes (refusal-aware scoring, the RAGAS engine rebuild, the new audit report).
+
+## Why this page exists
+
+A tool whose entire purpose is honest measurement cannot ship a silent rubric change. RAG-Forge v0.2.1 was published without this migration note and the drift was first caught externally during the PearMedica Cycle 3 audit (2026-04-15). v0.2.2 ships the note retroactively and adds this page so future upgraders have it on the way in rather than on the way out.

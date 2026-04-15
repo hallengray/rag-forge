@@ -128,6 +128,14 @@ def test_cycle2_fixture_no_openaiembeddings_attribute_error():
     v0.2.0 fixes it by injecting RagForgeRagasEmbeddings (which handles
     the ragas 0.4.x API change internally). If this attribute error
     reappears, the test will raise and fail.
+
+    **v0.2.2 update:** the assertion is no longer "metrics must be
+    populated." With the G3 skip-counter fan-out, a run against MockJudge
+    legitimately produces zero scored metrics and a full set of skip
+    records explaining why (MockJudge can't answer ragas's prompts). The
+    regression we're guarding against is specifically an AttributeError
+    referencing ``OpenAIEmbeddings`` or ``embed_query`` — so we assert
+    the call completed AND no skip record names that signature.
     """
     samples = _load_samples()
     evaluator = RagasEvaluator(
@@ -136,13 +144,21 @@ def test_cycle2_fixture_no_openaiembeddings_attribute_error():
         embeddings_provider="mock",
     )
     # If RagasEvaluator.evaluate() encounters an AttributeError during
-    # embedding computation, it will bubble up as an exception and fail the test.
-    # No silent catch — the regression is meant to be visible.
+    # embedding computation, our whole-batch catch swallows it into
+    # skipped_samples. Inspect the skip records for the Finding #4
+    # signature instead of relying on re-raise behaviour.
     result = evaluator.evaluate(samples)
 
-    # If we get here without raising, the bug did not reappear.
     assert result is not None
-    assert len(result.metrics) > 0, "evaluation should have produced metrics"
+    for skip in result.skipped_samples:
+        reason_lower = skip.reason.lower()
+        assert "openaiembeddings" not in reason_lower, (
+            f"Finding #4 regression: skip reason names OpenAIEmbeddings "
+            f"— {skip!r}"
+        )
+        assert "embed_query" not in reason_lower or "attributeerror" not in skip.exception_type.lower(), (
+            f"Finding #4 regression: AttributeError on embed_query — {skip!r}"
+        )
 
 
 @pytest.mark.ragas_integration
@@ -177,8 +193,29 @@ def test_cycle2_fixture_handles_long_structured_responses():
 
     # If we succeeded without InstructorRetryException, the fix holds.
     assert result is not None
-    # At minimum, we should not get all zeros with no explanation.
-    assert not all(m.score == 0.0 for m in result.metrics), (
-        "All metrics returned 0.0 — likely a silent coercion of exceptions, "
-        "possibly including max_tokens truncation errors"
-    )
+
+    # **v0.2.2 update:** the original assertion demanded non-zero metrics.
+    # With the G3 skip-counter fan-out, a MockJudge run legitimately
+    # skips every metric (MockJudge can't answer ragas's prompts) and
+    # the result comes back with ``metrics=[]`` and a full skip list.
+    # The Cycle 2 Finding #5 regression we care about is specifically
+    # InstructorRetryException / finish_reason='length' — assert those
+    # signatures do NOT appear in any skip reason.
+    for skip in result.skipped_samples:
+        assert "InstructorRetryException" not in skip.exception_type, (
+            f"Finding #5 regression: InstructorRetryException in skip — {skip!r}"
+        )
+        reason_lower = skip.reason.lower()
+        assert "finish_reason='length'" not in reason_lower, (
+            f"Finding #5 regression: max_tokens truncation in skip — {skip!r}"
+        )
+
+    # Also verify the old silent-coercion pathology: if any metric did
+    # score (non-skip path), it must not silently be 0.0 with no
+    # explanation. Either we have explicit skips OR real scores.
+    real_metrics_scored = [m for m in result.metrics if not m.skipped]
+    if real_metrics_scored and all(m.score == 0.0 for m in real_metrics_scored):
+        assert result.skipped_samples, (
+            "All scored metrics are 0.0 and there are no skip records "
+            "explaining why — the Cycle 2 silent-coercion pathology."
+        )

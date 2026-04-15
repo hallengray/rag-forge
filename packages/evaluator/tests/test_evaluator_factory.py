@@ -23,6 +23,19 @@ class TestCreateEvaluator:
         # (and its _extract_ragas_score helper) can be imported and unit-
         # tested without the optional dep installed. v0.2.0: a judge is now
         # required — pass MockJudge() so we reach the deferred ragas import.
+        #
+        # This test only makes sense when ragas is NOT installed. On CI
+        # matrices that include the ``[ragas]`` extra, skip it — the
+        # import succeeds and the evaluator proceeds past the point where
+        # the ImportError would be raised. The test_ragas_integration
+        # suite covers the ragas-installed path.
+        try:
+            import ragas  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            pytest.skip("ragas is installed — this test only asserts behaviour on systems without the [ragas] extra")
+
         from rag_forge_evaluator.engine import EvaluationSample
 
         evaluator = create_evaluator("ragas", judge=MockJudge())

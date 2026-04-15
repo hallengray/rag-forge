@@ -152,8 +152,8 @@ class RagasEvaluator(EvaluatorInterface):
             result = ragas_evaluate(
                 dataset,
                 metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
-                llm=llm_wrapper,  # type: ignore[arg-type]
-                embeddings=embeddings_wrapper,  # type: ignore[arg-type]
+                llm=llm_wrapper,  # type: ignore[arg-type, unused-ignore]
+                embeddings=embeddings_wrapper,  # type: ignore[arg-type, unused-ignore]
             )
         except Exception as exc:
             # Whole-batch ragas crash: every sample x metric pair is a skip.

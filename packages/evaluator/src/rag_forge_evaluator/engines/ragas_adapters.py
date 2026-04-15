@@ -7,28 +7,50 @@ gpt-4o-mini for faithfulness extraction. By injecting our own wrappers
 we honor --judge claude end-to-end and stay version-stable across ragas
 releases.
 
-ragas 0.4.x contract (from src/ragas/llms/base.py)::
+ragas 0.4.x contract (from src/ragas/llms/base.py), full public surface
+the wrapper must honour:
 
     class BaseRagasLLM(ABC):
-        def generate_text(
-            self,
-            prompt: PromptValue,
-            n: int = 1,
-            temperature: float | None = 0.01,
-            stop: list[str] | None = None,
-            callbacks: Callbacks = None,
-        ) -> LLMResult: ...
+        run_config: RunConfig
 
-        async def agenerate_text(...) -> LLMResult: ...
+        # abstract — must be implemented
+        def generate_text(self, prompt, n, temperature, stop, callbacks) -> LLMResult: ...
+        async def agenerate_text(self, prompt, n, temperature, stop, callbacks) -> LLMResult: ...
+        def is_finished(self, response: LLMResult) -> bool: ...
 
-Our wrappers implement the full signature so ragas receives exactly what
-its internal metric implementations expect, rather than duck-typing a
-narrow subset that may break on minor version bumps. ``n``, ``temperature``,
-``stop``, and ``callbacks`` are accepted for contract compatibility but
-currently forwarded to the underlying rag-forge Judge only insofar as the
-Judge interface supports them — the Judge protocol is a simple
-``(system_prompt, user_prompt) -> str`` call, so extra kwargs are
-gracefully ignored.
+        # concrete helpers on the base class that ragas's metric code CALLS
+        # on every LLM (not just ones that subclass BaseRagasLLM). A duck-
+        # typed wrapper must reimplement these or it will crash the moment
+        # a metric invokes them:
+        async def generate(self, prompt, n, temperature, stop, callbacks) -> LLMResult: ...
+        def get_temperature(self, n: int) -> float: ...
+        def set_run_config(self, run_config: RunConfig) -> None: ...
+
+    class BaseRagasEmbeddings(ABC):
+        run_config: RunConfig
+        def embed_query(self, text) -> list[float]: ...
+        def embed_documents(self, texts) -> list[list[float]]: ...
+        async def aembed_query(self, text) -> list[float]: ...
+        async def aembed_documents(self, texts) -> list[list[float]]: ...
+        def set_run_config(self, run_config: RunConfig) -> None: ...
+
+``n``, ``temperature``, ``stop``, and ``callbacks`` are accepted for
+contract compatibility but currently forwarded to the underlying rag-forge
+Judge only insofar as the Judge interface supports them — the Judge
+protocol is a simple ``(system_prompt, user_prompt) -> str`` call, so
+extra kwargs are gracefully ignored.
+
+**History:** v0.2.0 shipped only ``generate_text`` / ``agenerate_text`` /
+``model_name`` under the assumption those were the only methods ragas
+called on an LLM. The Cycle 3 PearMedica audit (2026-04-15) proved that
+assumption wrong — ragas's metric code calls the concrete
+``BaseRagasLLM.generate`` wrapper, which in turn calls ``agenerate_text``
+with retry. v0.2.2 adds the missing ``generate`` / ``get_temperature`` /
+``is_finished`` / ``set_run_config`` shims so the duck-typed wrapper
+matches the full base-class surface. A contract test in
+``tests/test_ragas_adapters_contract.py`` now iterates every public method
+on ``BaseRagasLLM`` and ``BaseRagasEmbeddings`` and asserts each is
+implemented, so this class of bug cannot silently ship again.
 
 ragas and langchain imports are deferred into method bodies so this
 module stays importable without either installed — unit tests run
@@ -114,9 +136,10 @@ class RagForgeRagasLLM:
     The class does NOT subclass ``BaseRagasLLM`` because that would force a
     hard import of ragas at module load time and break unit tests on
     machines without the ``[ragas]`` extra installed. It implements the
-    duck-typed contract — ragas only calls ``generate_text`` /
-    ``agenerate_text`` / ``model_name``, all of which we provide with
-    correct signatures and return types.
+    duck-typed contract by re-declaring every public method ragas calls —
+    see the module docstring for the full surface. The contract test at
+    ``tests/test_ragas_adapters_contract.py`` is the tripwire that keeps
+    this in sync with future ragas releases.
     """
 
     def __init__(
@@ -128,6 +151,7 @@ class RagForgeRagasLLM:
         self._judge = judge
         self._system_prompt = system_prompt
         self._refusal_aware = refusal_aware
+        self.run_config: Any = None
 
     def _complete(self, prompt: Any) -> str:
         """Internal: extract text, inject refusal note, call judge."""
@@ -185,6 +209,87 @@ class RagForgeRagasLLM:
     def model_name(self) -> str:
         """Return the model name from the underlying judge."""
         return self._judge.model_name()
+
+    async def generate(
+        self,
+        prompt: Any,
+        n: int = 1,
+        temperature: float | None = None,
+        stop: list[str] | None = None,
+        callbacks: Callbacks | None = None,
+    ) -> Any:
+        """Async concrete shim that mirrors ``BaseRagasLLM.generate``.
+
+        ragas's metric code calls ``await llm.generate(prompt, ...)`` on
+        every LLM, regardless of whether the LLM subclasses
+        ``BaseRagasLLM``. Because this wrapper is duck-typed (see class
+        docstring for why we do not subclass), we must re-declare
+        ``generate`` here or every RAGAS evaluation crashes on first job
+        with ``AttributeError: no attribute 'generate'`` — the Cycle 3
+        regression that motivated v0.2.2.
+
+        Implementation mirrors the base-class behaviour: resolve a
+        temperature default, delegate to ``agenerate_text``, then run
+        ``is_finished`` so ragas's retry / error surface behaves the
+        same. We intentionally skip the base class's ``add_async_retry``
+        wrapper — our underlying Judge implementations already own their
+        own retry policy (see e.g. ClaudeJudge's 529 handling) and
+        double-wrapping leads to retry storms.
+        """
+        if temperature is None:
+            temperature = self.get_temperature(n)
+        result = await self.agenerate_text(
+            prompt,
+            n=n,
+            temperature=temperature,
+            stop=stop,
+            callbacks=callbacks,
+        )
+        if not self.is_finished(result):
+            msg = (
+                "RagForgeRagasLLM.generate: underlying judge response did "
+                "not finish cleanly (is_finished == False). This is a "
+                "defensive check; override is_finished if your Judge "
+                "exposes a real finish signal."
+            )
+            raise RuntimeError(msg)
+        return result
+
+    def is_finished(self, response: Any) -> bool:
+        """Report whether a generation finished cleanly.
+
+        ragas uses this to decide whether to retry on truncation. Our
+        Judge protocol does not currently expose a finish-reason, so we
+        conservatively report True — the underlying Judge implementation
+        is responsible for retrying on truncation (see Cycle 2 Finding
+        #5 and the ClaudeJudge ``max_tokens`` raise).
+
+        If a future Judge exposes a finish-reason signal, this method is
+        the place to propagate it.
+        """
+        _ = response
+        return True
+
+    def get_temperature(self, n: int) -> float:
+        """Return a sampling temperature given the requested ``n``.
+
+        Matches ragas's own convention: near-deterministic for a single
+        sample, warmer when the caller asks for multiple. ragas uses
+        this to diversify samples for metrics that rely on sampling
+        stability (e.g. ``answer_correctness``).
+        """
+        return 0.01 if n <= 1 else 0.3
+
+    def set_run_config(self, run_config: Any) -> None:
+        """Store a ragas ``RunConfig`` for later use.
+
+        ragas's evaluation runner injects its ``RunConfig`` (timeouts,
+        retry budgets, worker counts) into every LLM and embeddings
+        wrapper before kicking off metric jobs. We store it for contract
+        compatibility; our actual execution path honours the Judge's
+        own timeout/retry configuration rather than ragas's.
+        """
+        self.run_config = run_config
 
 
 class _StringLLMResult:
@@ -275,6 +380,7 @@ class RagForgeRagasEmbeddings:
             raise ValueError(msg)
         self._provider = provider
         self._model = model
+        self.run_config: Any = None
 
     def embed_query(self, text: str) -> list[float]:
         if self._provider == "mock":
@@ -325,6 +431,35 @@ class RagForgeRagasEmbeddings:
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Async variant of ``embed_documents``."""
         return await asyncio.to_thread(self.embed_documents, texts)
+
+    def set_run_config(self, run_config: Any) -> None:
+        """Store a ragas ``RunConfig`` for contract compatibility.
+
+        See ``RagForgeRagasLLM.set_run_config`` for rationale.
+        """
+        self.run_config = run_config
+
+    def embed_text(self, text: str, is_async: bool = True) -> list[float]:
+        """Dispatch helper that ragas's concrete ``BaseRagasEmbeddings``
+        exposes alongside ``embed_query``. Some metrics call ``embed_text``
+        instead of ``embed_query`` — they are conceptually the same, just
+        different entry points. We forward to ``embed_query`` for the
+        sync path and to ``aembed_query`` when ``is_async=True``.
+
+        ``is_async=True`` is the base-class default, so we match it — but
+        because our underlying Judge/embedding clients are synchronous,
+        the "async" path just runs the sync call in a worker thread
+        (same pattern as ``aembed_query``).
+        """
+        if is_async:
+            return asyncio.run(self.aembed_query(text))
+        return self.embed_query(text)
+
+    def embed_texts(self, texts: list[str], is_async: bool = True) -> list[list[float]]:
+        """Batch variant of ``embed_text`` — same dispatch semantics."""
+        if is_async:
+            return asyncio.run(self.aembed_documents(texts))
+        return self.embed_documents(texts)
 
     @classmethod
     def _mock_embed(cls, text: str) -> list[float]:

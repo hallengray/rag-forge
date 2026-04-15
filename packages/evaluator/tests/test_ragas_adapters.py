@@ -1,6 +1,7 @@
 """Tests for ragas adapter wrappers."""
 
 import asyncio
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,20 @@ from rag_forge_evaluator.engines.ragas_adapters import (
     RagForgeRagasEmbeddings,
     RagForgeRagasLLM,
 )
+
+
+def _llm_result_text(result: Any) -> str:
+    """Extract the generated text from either a real langchain ``LLMResult``
+    or the ``_StringLLMResult`` stub used when langchain is not installed.
+
+    Tests need to assert against the judge's response regardless of which
+    environment they run in — langchain-core comes in with the ``[ragas]``
+    extra, so on CI with the extra installed we get real LLMResults, and
+    without it we get the duck-typed stub.
+    """
+    if isinstance(result, str):
+        return result
+    return str(result.generations[0][0].text)
 
 
 class FakeJudge:
@@ -28,7 +43,7 @@ def test_wrapper_forwards_generate_text_to_judge():
     judge = FakeJudge(response="faithful")
     llm = RagForgeRagasLLM(judge=judge, refusal_aware=False)
     result = llm.generate_text("What is the capital of France?")
-    assert result == "faithful"
+    assert _llm_result_text(result) == "faithful"
     assert judge.calls[0][1] == "What is the capital of France?"
 
 
@@ -49,8 +64,32 @@ def test_wrapper_async_generate_text():
     judge = FakeJudge(response="async-ok")
     llm = RagForgeRagasLLM(judge=judge, refusal_aware=False)
     result = asyncio.run(llm.agenerate_text("ping"))
-    assert result == "async-ok"
+    assert _llm_result_text(result) == "async-ok"
     assert judge.calls[0][1] == "ping"
+
+
+def test_wrapper_async_generate_forwards_to_agenerate_text():
+    """The v0.2.2 ``generate`` shim. This is the method Cycle 3 caught
+    missing — ragas's metric code calls ``await llm.generate(prompt)``
+    and v0.2.1 crashed with AttributeError. Verifies the shim exists,
+    is async, and threads the prompt all the way through to the judge."""
+    judge = FakeJudge(response="generate-ok")
+    llm = RagForgeRagasLLM(judge=judge, refusal_aware=False)
+    result = asyncio.run(llm.generate("what is DKA?"))
+    assert _llm_result_text(result) == "generate-ok"
+    assert judge.calls[0][1] == "what is DKA?"
+
+
+def test_wrapper_async_generate_resolves_default_temperature_when_none():
+    """BaseRagasLLM.generate resolves ``temperature=None`` via
+    ``get_temperature(n)`` before calling ``agenerate_text``. Our shim
+    must match that behaviour so ragas callers that pass ``None`` don't
+    blow up with a type error in downstream judge code."""
+    judge = FakeJudge(response="ok")
+    llm = RagForgeRagasLLM(judge=judge, refusal_aware=False)
+    # None triggers the get_temperature fallback path; must not raise.
+    result = asyncio.run(llm.generate("prompt", n=1, temperature=None))
+    assert _llm_result_text(result) == "ok"
 
 
 def test_embeddings_mock_provider_returns_deterministic_vector():

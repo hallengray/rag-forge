@@ -88,18 +88,13 @@ def test_whole_batch_crash_fans_out_to_every_sample_metric_pair() -> None:
     )
     samples = _make_samples(3)
 
-    # Monkeypatch the bound method to inject a synthetic whole-batch
-    # failure. This is the exact code path the Cycle 3 AttributeError
-    # took before v0.2.2 G1 fixed the generate() shim.
-    import rag_forge_evaluator.engines.ragas_evaluator as mod
-
-    real_import = mod.__dict__.copy()
-
+    # Inject a synthetic whole-batch failure by patching ragas.evaluate.
+    # This is the exact code path the Cycle 3 AttributeError took before
+    # v0.2.2 G1 fixed the generate() shim.
     def _boom(*args: object, **kwargs: object) -> None:
         _ = args, kwargs
         raise RuntimeError("synthetic whole-batch ragas failure")
 
-    # Patch ragas_evaluate inside the deferred import block.
     import ragas
 
     original_evaluate = ragas.evaluate
@@ -108,7 +103,6 @@ def test_whole_batch_crash_fans_out_to_every_sample_metric_pair() -> None:
         result = evaluator.evaluate(samples)
     finally:
         ragas.evaluate = original_evaluate  # type: ignore[assignment]
-        _ = real_import
 
     # 3 samples x 4 metrics = 12 skip records, not 4.
     expected = len(samples) * 4  # 4 metric names in RagasEvaluator

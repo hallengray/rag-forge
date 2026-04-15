@@ -116,6 +116,28 @@ def test_ragas_evaluate_never_raises_attribute_error_on_wrapper() -> None:
     embeddings = RagForgeRagasEmbeddings(provider="mock")
     dataset = _make_dataset()
 
+    # What we expect downstream of our wrappers when everything is
+    # shaped correctly: ragas's faithfulness metric reaches its
+    # pydantic output parser and fails to parse our stub judge's
+    # canned JSON. That raises a ragas-internal exception (either
+    # ``RagasOutputParserException`` or a ``RagasException``
+    # subclass). **Any other exception shape** — TypeError from a bad
+    # shim signature, RuntimeError from a nested-loop bug, ValueError
+    # from embedding dimension mismatch — means something our wrapper
+    # is responsible for went wrong, and the test must fail.
+    #
+    # CodeRabbit on PR #36 pointed out the original broad
+    # ``except Exception`` swallowed real bugs as long as they
+    # weren't AttributeError. This tightening makes the regression
+    # guard meaningful.
+    allowed_exception_types: tuple[type[BaseException], ...]
+    try:
+        from ragas.exceptions import RagasOutputParserException  # type: ignore[attr-defined]
+
+        allowed_exception_types = (RagasOutputParserException,)
+    except ImportError:
+        allowed_exception_types = ()
+
     try:
         evaluate(
             dataset=dataset,
@@ -126,26 +148,17 @@ def test_ragas_evaluate_never_raises_attribute_error_on_wrapper() -> None:
             show_progress=False,
         )
     except AttributeError as exc:
-        # This is the regression we are guarding against. If ragas's
-        # internal code path reaches for a method our wrapper doesn't
-        # declare, this catches it with an actionable message.
-        message = str(exc)
         wrapper_names = ("RagForgeRagasLLM", "RagForgeRagasEmbeddings")
-        if any(name in message for name in wrapper_names):
+        if any(name in str(exc) for name in wrapper_names):
             pytest.fail(
                 f"ragas called a method on our wrapper that doesn't "
                 f"exist: {exc!r}. Add the missing shim in "
                 f"ragas_adapters.py and update the contract test."
             )
-        # AttributeError from somewhere else in ragas's stack is still a
-        # real bug, just not ours. Re-raise with context.
         raise
-    except Exception as exc:
-        # Any non-AttributeError is acceptable for this smoke test —
-        # parser failures, schema mismatches, mock-embedding dimension
-        # mismatches, etc. all mean the wrapper dispatch worked and
-        # ragas is doing its own thing downstream of our code.
-        exc_name = type(exc).__name__
-        assert "AttributeError" not in exc_name, (
-            f"Unexpected AttributeError-shaped exception: {exc!r}"
-        )
+    except allowed_exception_types:
+        # Parser / schema failure downstream of our wrappers. The
+        # wrapper dispatch worked; ragas is now doing its own thing
+        # with a stub judge that returns JSON not matching its
+        # internal pydantic schemas. Treat as success.
+        pass

@@ -98,6 +98,54 @@ def test_embeddings_wrapper_declares_every_base_class_public_method(
     )
 
 
+def test_llm_wrapper_async_signature_matches_base(ragas_base_llm: type) -> None:
+    """For every method that is ``async`` on ``BaseRagasLLM``, our
+    wrapper's method of the same name must also be ``async`` — and vice
+    versa. CodeRabbit on PR #36 pointed out that checking names alone
+    lets sync-vs-async mismatches through. A sync wrapper of an async
+    base method crashes at runtime the moment ragas invokes it with
+    ``await``; a sync base method called with ``await`` crashes the
+    other direction.
+    """
+    for name in _public_methods(ragas_base_llm):
+        wrapper_attr = getattr(RagForgeRagasLLM, name, None)
+        if wrapper_attr is None:
+            continue  # name-parity test above catches missing methods
+        base_is_async = inspect.iscoroutinefunction(getattr(ragas_base_llm, name))
+        wrapper_is_async = inspect.iscoroutinefunction(wrapper_attr)
+        assert wrapper_is_async == base_is_async, (
+            f"RagForgeRagasLLM.{name} is "
+            f"{'async' if wrapper_is_async else 'sync'} but "
+            f"BaseRagasLLM.{name} is "
+            f"{'async' if base_is_async else 'sync'}. Fix one to match."
+        )
+
+
+def test_embeddings_wrapper_async_signature_matches_base(
+    ragas_base_embeddings: type,
+) -> None:
+    """Same async/sync parity check as the LLM wrapper, for embeddings.
+
+    This is the test that would have caught v0.2.2's first attempt at
+    sync ``embed_text`` / ``embed_texts`` before they shipped — both
+    are ``async`` on ragas's ``BaseRagasEmbeddings`` in 0.4.x.
+    """
+    for name in _public_methods(ragas_base_embeddings):
+        wrapper_attr = getattr(RagForgeRagasEmbeddings, name, None)
+        if wrapper_attr is None:
+            continue
+        base_is_async = inspect.iscoroutinefunction(
+            getattr(ragas_base_embeddings, name)
+        )
+        wrapper_is_async = inspect.iscoroutinefunction(wrapper_attr)
+        assert wrapper_is_async == base_is_async, (
+            f"RagForgeRagasEmbeddings.{name} is "
+            f"{'async' if wrapper_is_async else 'sync'} but "
+            f"BaseRagasEmbeddings.{name} is "
+            f"{'async' if base_is_async else 'sync'}. Fix one to match."
+        )
+
+
 def test_llm_wrapper_generate_is_async_and_callable_on_instance() -> None:
     """The specific shim that Cycle 3 caught missing — invoke it."""
     llm = RagForgeRagasLLM(judge=_StubJudge(), refusal_aware=False)

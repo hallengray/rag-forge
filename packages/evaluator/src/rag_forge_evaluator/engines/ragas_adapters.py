@@ -116,6 +116,38 @@ def _wrap_as_llm_result(text: str) -> LLMResult:
     return _LLMResult(generations=[[Generation(text=text)]])
 
 
+def _fuse_llm_results(results: list[Any]) -> Any:
+    """Fuse N single-generation ``LLMResult`` objects into one
+    ``[[gen1..genN]]``-shaped ``LLMResult``.
+
+    ragas expects ``LLMResult.generations`` to be a list whose outer
+    length is the number of prompts (1 for a single prompt) and whose
+    inner length is the number of samples per prompt (N for ``n>1``).
+    Our ``agenerate_text`` path produces one generation per call, so to
+    honour the ``n>1`` contract we fan out ``n`` calls and reshape them
+    here. Consumes results built via ``_wrap_as_llm_result`` or the
+    ``_StringLLMResult`` stub.
+
+    If fusion fails (mixed result shapes, missing langchain, etc.) we
+    fall back to returning the first result — ragas will then see a
+    single generation, which is strictly worse than N but still
+    correct shape. The ``n>1`` path is rare in stock ragas metrics so
+    conservative fallback is preferable to crashing.
+    """
+    if not results:
+        msg = "_fuse_llm_results called with empty results list"
+        raise ValueError(msg)
+    if len(results) == 1:
+        return results[0]
+    try:
+        from langchain_core.outputs import LLMResult as _LLMResult
+
+        fused_generations = [gen for r in results for gen in r.generations[0]]
+        return _LLMResult(generations=[fused_generations])
+    except (ImportError, AttributeError, IndexError):
+        return results[0]
+
+
 class RagForgeRagasLLM:
     """ragas LLM wrapper that forwards to a rag-forge Judge.
 
@@ -214,7 +246,7 @@ class RagForgeRagasLLM:
         self,
         prompt: Any,
         n: int = 1,
-        temperature: float | None = None,
+        temperature: float | None = 0.01,
         stop: list[str] | None = None,
         callbacks: Callbacks | None = None,
     ) -> Any:
@@ -228,23 +260,54 @@ class RagForgeRagasLLM:
         with ``AttributeError: no attribute 'generate'`` — the Cycle 3
         regression that motivated v0.2.2.
 
-        Implementation mirrors the base-class behaviour: resolve a
-        temperature default, delegate to ``agenerate_text``, then run
-        ``is_finished`` so ragas's retry / error surface behaves the
-        same. We intentionally skip the base class's ``add_async_retry``
-        wrapper — our underlying Judge implementations already own their
-        own retry policy (see e.g. ClaudeJudge's 529 handling) and
-        double-wrapping leads to retry storms.
+        Default temperature 0.01 matches ``BaseRagasLLM.generate``.
+        Passing ``None`` explicitly still triggers the
+        ``get_temperature(n)`` fallback, same as the base class.
+
+        **Sample diversity (``n > 1``)** — ragas uses ``n > 1`` for
+        metrics that need multiple samples (e.g. ``answer_correctness``
+        consistency checks). ``LLMResult.generations`` must be shaped
+        ``[[gen1, gen2, ..., genN]]`` — a single prompt run containing
+        N candidate generations. The rag-forge ``Judge`` protocol is
+        synchronous and stateless, so we invoke the judge ``n`` times
+        in parallel via ``asyncio.gather`` and fuse the per-call
+        results into the expected shape. For ``n == 1`` (the common
+        case) this is a single call, same cost as before.
+
+        We intentionally skip the base class's ``add_async_retry``
+        wrapper — our underlying Judge implementations already own
+        their own retry policy (see e.g. ClaudeJudge's 529 handling)
+        and double-wrapping leads to retry storms.
         """
         if temperature is None:
             temperature = self.get_temperature(n)
-        result = await self.agenerate_text(
-            prompt,
-            n=n,
-            temperature=temperature,
-            stop=stop,
-            callbacks=callbacks,
-        )
+        if n <= 1:
+            result = await self.agenerate_text(
+                prompt,
+                n=n,
+                temperature=temperature,
+                stop=stop,
+                callbacks=callbacks,
+            )
+        else:
+            # Fan out n independent calls and fuse into a single
+            # [[gen1..genN]] LLMResult so ragas's multi-sample metrics
+            # see the shape they expect. asyncio.gather runs the
+            # per-call agenerate_text invocations concurrently via
+            # the worker-thread path.
+            per_call_results = await asyncio.gather(
+                *(
+                    self.agenerate_text(
+                        prompt,
+                        n=1,
+                        temperature=temperature,
+                        stop=stop,
+                        callbacks=callbacks,
+                    )
+                    for _ in range(n)
+                )
+            )
+            result = _fuse_llm_results(per_call_results)
         if not self.is_finished(result):
             msg = (
                 "RagForgeRagasLLM.generate: underlying judge response did "
@@ -439,27 +502,34 @@ class RagForgeRagasEmbeddings:
         """
         self.run_config = run_config
 
-    def embed_text(self, text: str, is_async: bool = True) -> list[float]:
-        """Dispatch helper that ragas's concrete ``BaseRagasEmbeddings``
-        exposes alongside ``embed_query``. Some metrics call ``embed_text``
-        instead of ``embed_query`` — they are conceptually the same, just
-        different entry points. We forward to ``embed_query`` for the
-        sync path and to ``aembed_query`` when ``is_async=True``.
+    async def embed_text(self, text: str, is_async: bool = True) -> list[float]:
+        """Dispatch helper matching ``BaseRagasEmbeddings.embed_text``.
 
-        ``is_async=True`` is the base-class default, so we match it — but
-        because our underlying Judge/embedding clients are synchronous,
-        the "async" path just runs the sync call in a worker thread
-        (same pattern as ``aembed_query``).
+        **This method is ``async``, not ``def``.** ragas's real
+        ``BaseRagasEmbeddings.embed_text`` is an ``async`` coroutine —
+        metric code invokes it with ``await embeddings.embed_text(...)``.
+        v0.2.2 originally shipped this as a sync method that called
+        ``asyncio.run(self.aembed_query(text))``, which crashes with
+        ``RuntimeError: asyncio.run() cannot be called from a running
+        event loop`` because ragas's evaluation runner is itself
+        inside an event loop. Caught by CodeRabbit on PR #36.
+
+        ``is_async`` is accepted for signature parity with the base
+        class but ignored — our underlying embedding clients are
+        synchronous and ``aembed_query`` already runs them in a worker
+        thread via ``asyncio.to_thread``, so both flag values land on
+        the same code path.
         """
-        if is_async:
-            return asyncio.run(self.aembed_query(text))
-        return self.embed_query(text)
+        _ = is_async
+        return await self.aembed_query(text)
 
-    def embed_texts(self, texts: list[str], is_async: bool = True) -> list[list[float]]:
-        """Batch variant of ``embed_text`` — same dispatch semantics."""
-        if is_async:
-            return asyncio.run(self.aembed_documents(texts))
-        return self.embed_documents(texts)
+    async def embed_texts(self, texts: list[str], is_async: bool = True) -> list[list[float]]:
+        """Batch variant of ``embed_text`` — same async contract.
+
+        See ``embed_text`` for the async / ``asyncio.run()`` history.
+        """
+        _ = is_async
+        return await self.aembed_documents(texts)
 
     @classmethod
     def _mock_embed(cls, text: str) -> list[float]:

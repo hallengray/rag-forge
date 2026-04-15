@@ -136,10 +136,14 @@ def _fuse_llm_results(results: list[Any]) -> Any:
       the optional extras).
 
     Flattens the ``[[gen]]`` shape of each input into a single
-    ``[[gen, gen, ..., gen]]`` shape on the output. Per-input
-    attribute access failures or mixed shapes fall back to returning
-    ``results[0]`` — strictly worse than N but still correct shape,
-    and the ``n>1`` path is rare in stock ragas metrics.
+    ``[[gen, gen, ..., gen]]`` shape on the output. **Raises
+    ``ValueError`` on malformed input** — e.g. an item that is not
+    an LLMResult, a missing ``.generations`` attribute, an empty
+    outer list, or a non-iterable inner element. CodeRabbit on PR
+    #36 round 2 flagged an earlier silent ``results[0]`` fallback
+    as a real correctness bug: collapsing a requested ``n>3`` into
+    a single sample skews downstream ragas scoring without any
+    signal. Fail loud instead.
     """
     if not results:
         msg = "_fuse_llm_results called with empty results list"
@@ -148,8 +152,14 @@ def _fuse_llm_results(results: list[Any]) -> Any:
         return results[0]
     try:
         fused_generations = [gen for r in results for gen in r.generations[0]]
-    except (AttributeError, IndexError):
-        return results[0]
+    except (AttributeError, IndexError, TypeError) as exc:
+        msg = (
+            f"_fuse_llm_results received a malformed result: {exc!r}. "
+            f"Every item must expose .generations[0] as a non-empty "
+            f"iterable of Generation objects. Got result types: "
+            f"{[type(r).__name__ for r in results]}"
+        )
+        raise ValueError(msg) from exc
     # Prefer the real langchain LLMResult when langchain is installed;
     # otherwise construct a _StringLLMResult carrying the fused list.
     try:

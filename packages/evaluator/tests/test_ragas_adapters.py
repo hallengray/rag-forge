@@ -121,17 +121,25 @@ def test_wrapper_async_generate_n_greater_than_one_produces_fused_shape():
     on PR #36 caught that the original shim ignored ``n`` and returned
     a single generation.
 
-    Uses a judge that returns a distinct response per call so we can
-    verify all N calls actually fired AND that their outputs appear
-    inside the fused result.
+    Uses a thread-safe counting judge because
+    ``RagForgeRagasLLM.generate`` fans the N calls out via
+    ``asyncio.gather`` and each call runs in a separate worker thread
+    (``asyncio.to_thread`` under the hood). A naive non-atomic
+    ``counter += 1`` would race and produce duplicate sample labels
+    or an undercounted total, flaking the test. CodeRabbit on PR #36
+    round 2 caught this.
     """
+    import threading as _threading
+
     counter = {"i": 0}
+    lock = _threading.Lock()
 
     class CountingJudge:
         def judge(self, system_prompt: str, user_prompt: str) -> str:
             _ = system_prompt, user_prompt
-            counter["i"] += 1
-            return f"sample-{counter['i']}"
+            with lock:
+                counter["i"] += 1
+                return f"sample-{counter['i']}"
 
         def model_name(self) -> str:
             return "counting-judge"
@@ -150,6 +158,32 @@ def test_wrapper_async_generate_n_greater_than_one_produces_fused_shape():
     assert texts == {"sample-1", "sample-2", "sample-3"}, (
         f"expected three distinct samples, got {texts}"
     )
+
+
+def test_fuse_llm_results_raises_on_malformed_input():
+    """``_fuse_llm_results`` must fail loud on malformed result shapes
+    instead of silently collapsing to ``results[0]``. CodeRabbit on
+    PR #36 round 2 pointed out that a silent fallback hides real
+    ``n > 1`` correctness bugs — a single returned sample skews
+    downstream ragas metrics with no signal.
+    """
+    from rag_forge_evaluator.engines.ragas_adapters import _fuse_llm_results
+
+    class NotAnLLMResult:
+        pass
+
+    with pytest.raises(ValueError, match="malformed result"):
+        _fuse_llm_results([NotAnLLMResult(), NotAnLLMResult()])
+
+    class EmptyOuter:
+        def __init__(self) -> None:
+            self.generations: list[list[object]] = []
+
+    with pytest.raises(ValueError, match="malformed result"):
+        _fuse_llm_results([EmptyOuter(), EmptyOuter()])
+
+    with pytest.raises(ValueError, match="empty results list"):
+        _fuse_llm_results([])
 
 
 def test_embeddings_embed_text_is_async_and_awaitable():

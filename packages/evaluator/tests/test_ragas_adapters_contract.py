@@ -146,6 +146,75 @@ def test_embeddings_wrapper_async_signature_matches_base(
         )
 
 
+def _required_param_names(cls: type, method_name: str) -> set[str]:
+    """Return the set of named parameters on ``cls.method_name``.
+
+    Excludes ``self`` / ``cls`` and variadic ``*args`` / ``**kwargs``
+    catchalls. Used by the parameter-parity tests below to compare
+    the named parameters a wrapper accepts against what the base
+    class declares. Extra parameters on the wrapper are fine;
+    missing parameters mean ragas will hit a ``TypeError`` the
+    moment it passes that kwarg.
+    """
+    try:
+        sig = inspect.signature(getattr(cls, method_name))
+    except (ValueError, TypeError):
+        return set()
+    return {
+        name
+        for name, param in sig.parameters.items()
+        if name not in ("self", "cls")
+        and param.kind
+        not in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        )
+    }
+
+
+def test_llm_wrapper_parameter_names_cover_base_class(
+    ragas_base_llm: type,
+) -> None:
+    """For every method present on both the base class and our wrapper,
+    the wrapper must accept at least every named parameter the base
+    class declares. Missing a name means ragas will hit a TypeError
+    the moment it tries to pass that kwarg.
+
+    CodeRabbit on PR #38 round 2 pointed out that checking async/sync
+    parity alone lets parameter drift through. A future ragas release
+    that adds ``max_tokens`` to ``generate_text`` would silently break
+    our wrapper until a user audit caught it.
+    """
+    for name in _public_methods(ragas_base_llm):
+        if getattr(RagForgeRagasLLM, name, None) is None:
+            continue
+        base_params = _required_param_names(ragas_base_llm, name)
+        wrapper_params = _required_param_names(RagForgeRagasLLM, name)
+        missing = base_params - wrapper_params
+        assert not missing, (
+            f"RagForgeRagasLLM.{name} is missing parameters that "
+            f"BaseRagasLLM.{name} declares: {sorted(missing)}. Either "
+            f"add them to the shim signature or accept **kwargs so "
+            f"ragas's caller can still pass them."
+        )
+
+
+def test_embeddings_wrapper_parameter_names_cover_base_class(
+    ragas_base_embeddings: type,
+) -> None:
+    """Same parameter-parity check for the embeddings wrapper."""
+    for name in _public_methods(ragas_base_embeddings):
+        if getattr(RagForgeRagasEmbeddings, name, None) is None:
+            continue
+        base_params = _required_param_names(ragas_base_embeddings, name)
+        wrapper_params = _required_param_names(RagForgeRagasEmbeddings, name)
+        missing = base_params - wrapper_params
+        assert not missing, (
+            f"RagForgeRagasEmbeddings.{name} is missing parameters "
+            f"that BaseRagasEmbeddings.{name} declares: {sorted(missing)}."
+        )
+
+
 def test_llm_wrapper_generate_is_async_and_callable_on_instance() -> None:
     """The specific shim that Cycle 3 caught missing — invoke it."""
     llm = RagForgeRagasLLM(judge=_StubJudge(), refusal_aware=False)

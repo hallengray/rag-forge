@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2 — Honest-Measurement Repair Release (unreleased)
+## 0.2.2 — Honest-Measurement Repair Release (2026-04-15)
 
 Cycle 3 of the PearMedica clinical audit (2026-04-15) caught five gaps in v0.2.1. This release closes every one of them. No new features.
 

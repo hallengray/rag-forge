@@ -45,7 +45,7 @@ Holistic scoring is the more lenient of the two. That's the +0.25 you're seeing.
 3. **Re-run the same audit.** The telemetry, golden set, and retrieval code should all be identical — only the RAG-Forge version has changed.
 4. **Compare the two JSON reports.** Expect Context Relevance to be roughly +0.25. Expect the other three metrics to be within +/-0.05. If any other metric moved by more than that, investigate before accepting — it might be a real regression.
 5. **Re-baseline your CI gates.** If your v0.1.x gate was `context_relevance >= 0.60`, you may need `>= 0.80` or higher under v0.2.x to catch the same regression magnitude. Set the new threshold against your known-good pipeline's v0.2.x score minus a small safety margin.
-6. **Annotate the re-baseline** in your repo somewhere your team will see it. "Context Relevance gate bumped 0.60 -> 0.80 on 2026-04-17 to account for RAG-Forge v0.2.x holistic rubric — see docs."
+6. **Annotate the re-baseline** in your repo somewhere your team will see it. Example: _"Context Relevance gate bumped 0.60 -> 0.80 on YYYY-MM-DD to account for RAG-Forge v0.2.x holistic rubric — see docs."_
 
 ## What about the other metrics?
 

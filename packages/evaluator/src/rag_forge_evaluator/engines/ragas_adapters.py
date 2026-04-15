@@ -117,22 +117,29 @@ def _wrap_as_llm_result(text: str) -> LLMResult:
 
 
 def _fuse_llm_results(results: list[Any]) -> Any:
-    """Fuse N single-generation ``LLMResult`` objects into one
-    ``[[gen1..genN]]``-shaped ``LLMResult``.
+    """Fuse N single-generation result objects into one
+    ``[[gen1..genN]]``-shaped result.
 
     ragas expects ``LLMResult.generations`` to be a list whose outer
     length is the number of prompts (1 for a single prompt) and whose
     inner length is the number of samples per prompt (N for ``n>1``).
-    Our ``agenerate_text`` path produces one generation per call, so to
-    honour the ``n>1`` contract we fan out ``n`` calls and reshape them
-    here. Consumes results built via ``_wrap_as_llm_result`` or the
-    ``_StringLLMResult`` stub.
+    Our ``agenerate_text`` path produces one generation per call, so
+    to honour the ``n>1`` contract we fan out ``n`` calls and reshape
+    them here.
 
-    If fusion fails (mixed result shapes, missing langchain, etc.) we
-    fall back to returning the first result — ragas will then see a
-    single generation, which is strictly worse than N but still
-    correct shape. The ``n>1`` path is rare in stock ragas metrics so
-    conservative fallback is preferable to crashing.
+    Handles both of the result shapes ``agenerate_text`` may return:
+
+    - The real ``langchain_core.outputs.LLMResult`` (production path
+      with the ``[ragas]`` extra installed).
+    - The ``_StringLLMResult`` stub (unit-test path without langchain
+      — shipped by this module for environments that don't install
+      the optional extras).
+
+    Flattens the ``[[gen]]`` shape of each input into a single
+    ``[[gen, gen, ..., gen]]`` shape on the output. Per-input
+    attribute access failures or mixed shapes fall back to returning
+    ``results[0]`` — strictly worse than N but still correct shape,
+    and the ``n>1`` path is rare in stock ragas metrics.
     """
     if not results:
         msg = "_fuse_llm_results called with empty results list"
@@ -140,12 +147,17 @@ def _fuse_llm_results(results: list[Any]) -> Any:
     if len(results) == 1:
         return results[0]
     try:
+        fused_generations = [gen for r in results for gen in r.generations[0]]
+    except (AttributeError, IndexError):
+        return results[0]
+    # Prefer the real langchain LLMResult when langchain is installed;
+    # otherwise construct a _StringLLMResult carrying the fused list.
+    try:
         from langchain_core.outputs import LLMResult as _LLMResult
 
-        fused_generations = [gen for r in results for gen in r.generations[0]]
         return _LLMResult(generations=[fused_generations])
-    except (ImportError, AttributeError, IndexError):
-        return results[0]
+    except ImportError:
+        return _StringLLMResult._from_generations(fused_generations)
 
 
 class RagForgeRagasLLM:
@@ -367,6 +379,23 @@ class _StringLLMResult:
     def __init__(self, text: str) -> None:
         self._text = text
         self.generations = [[_StringGeneration(text)]]
+
+    @classmethod
+    def _from_generations(cls, generations: list[Any]) -> _StringLLMResult:
+        """Build a stub carrying a pre-fused ``[[gen1..genN]]`` list.
+
+        Used by ``_fuse_llm_results`` on the no-langchain code path
+        when ``n > 1`` in ``RagForgeRagasLLM.generate`` fans out
+        multiple calls and needs to collapse them into one result
+        object. The ``_text`` property falls back to the first
+        generation's text so ``str(result)`` and ``result == "x"``
+        remain useful on the fused object.
+        """
+        instance = cls.__new__(cls)
+        first_text = generations[0].text if generations else ""
+        instance._text = first_text
+        instance.generations = [generations]
+        return instance
 
     @property
     def text(self) -> str:

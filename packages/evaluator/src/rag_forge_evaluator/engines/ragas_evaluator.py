@@ -142,11 +142,18 @@ class RagasEvaluator(EvaluatorInterface):
 
         skipped_samples: list[SkipRecord] = []
         try:
+            # RagForgeRagasLLM / RagForgeRagasEmbeddings deliberately do
+            # NOT subclass ragas.llms.base.BaseRagasLLM (see that module's
+            # docstring — keeps ragas a soft dep). ragas accepts them at
+            # runtime through duck typing, but mypy only sees the
+            # declared subclasses and reports arg-type errors. The
+            # contract test in tests/test_ragas_adapters_contract.py is
+            # the real guard against interface drift.
             result = ragas_evaluate(
                 dataset,
                 metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
-                llm=llm_wrapper,
-                embeddings=embeddings_wrapper,
+                llm=llm_wrapper,  # type: ignore[arg-type, unused-ignore]
+                embeddings=embeddings_wrapper,  # type: ignore[arg-type, unused-ignore]
             )
         except Exception as exc:
             # Whole-batch ragas crash: every sample x metric pair is a skip.
@@ -154,22 +161,16 @@ class RagasEvaluator(EvaluatorInterface):
             # report can honestly say "12 samples submitted, 0 metrics
             # scored, 48 skip records"; passed is False because nothing
             # was actually validated.
-            for sample in samples:
-                for metric_name in _METRIC_NAMES:
-                    skipped_samples.append(
-                        SkipRecord(
-                            sample_id=sample.sample_id or sample.query[:40],
-                            metric_name=metric_name,
-                            reason=str(exc),
-                            exception_type=type(exc).__name__,
-                        )
-                    )
+            skipped_samples.extend(
+                self._fan_out_skip_records(samples, exc, _METRIC_NAMES),
+            )
             return EvaluationResult(
                 metrics=[],
                 overall_score=0.0,
                 samples_evaluated=len(samples),
                 passed=False,
                 skipped_samples=skipped_samples,
+                skipped_evaluations=len(skipped_samples),
             )
 
         aggregated: list[MetricResult] = []
@@ -177,13 +178,16 @@ class RagasEvaluator(EvaluatorInterface):
             try:
                 score = _extract_ragas_score(result, metric_name)
             except ValueError as exc:
-                skipped_samples.append(
-                    SkipRecord(
-                        sample_id="<aggregate>",
-                        metric_name=metric_name,
-                        reason=str(exc),
-                        exception_type=type(exc).__name__,
-                    )
+                # Score extraction failed for this metric — typically
+                # because ragas silently NaN-ed it after every per-job
+                # exception. Fan out the skip across every sample so
+                # the report's Skipped counter reflects the true blast
+                # radius (48 for a 12-sample x 4-metric run), not just
+                # 4 aggregate records. Cycle 3's "Skipped: 0 is still
+                # wrong" finding was precisely this: the detail list
+                # told the truth but the counter didn't.
+                skipped_samples.extend(
+                    self._fan_out_skip_records(samples, exc, [metric_name]),
                 )
                 continue
             threshold = self._thresholds.get(metric_name, _DEFAULT_THRESHOLDS[metric_name])
@@ -213,7 +217,43 @@ class RagasEvaluator(EvaluatorInterface):
             samples_evaluated=len(samples),
             passed=passed,
             skipped_samples=skipped_samples,
+            skipped_evaluations=len(skipped_samples),
         )
+
+    @staticmethod
+    def _fan_out_skip_records(
+        samples: list[EvaluationSample],
+        exc: BaseException,
+        metric_names: list[str],
+    ) -> list[SkipRecord]:
+        """Produce one SkipRecord per (sample, metric) pair for a failure.
+
+        Used when ragas fails at a level coarser than a single metric/sample
+        pair — whole-batch crash, or a single metric that NaN-ed for every
+        sample. Attributing a single coarse failure back to every affected
+        sample is what makes the Skipped counter in the report match the
+        true blast radius.
+
+        The error message is truncated to 400 chars so long Python tracebacks
+        don't blow up HTML / PDF rendering downstream.
+        """
+        reason = str(exc)
+        if len(reason) > 400:
+            reason = reason[:397] + "..."
+        exception_type = type(exc).__name__
+        records: list[SkipRecord] = []
+        for sample in samples:
+            sample_id = sample.sample_id or sample.query[:40]
+            for metric_name in metric_names:
+                records.append(
+                    SkipRecord(
+                        sample_id=sample_id,
+                        metric_name=metric_name,
+                        reason=reason,
+                        exception_type=exception_type,
+                    )
+                )
+        return records
 
     def supported_metrics(self) -> list[str]:
         return list(_METRIC_NAMES)

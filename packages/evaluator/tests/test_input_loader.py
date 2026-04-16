@@ -51,6 +51,58 @@ class TestLoadJsonl:
         jsonl.write_text("", encoding="utf-8")
         assert InputLoader.load_jsonl(jsonl) == []
 
+    def test_extracts_case_id_as_sample_id(self, tmp_path: Path) -> None:
+        """JSONL with case_id field should populate sample_id."""
+        jsonl = tmp_path / "with_case_id.jsonl"
+        jsonl.write_text(
+            json.dumps({"case_id": "acs-001-typical-stemi", "query": "q", "contexts": ["c"], "response": "r"}),
+            encoding="utf-8",
+        )
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "acs-001-typical-stemi"
+
+    def test_extracts_sample_id_field(self, tmp_path: Path) -> None:
+        """JSONL with sample_id field (no case_id) should populate sample_id."""
+        jsonl = tmp_path / "with_sample_id.jsonl"
+        jsonl.write_text(
+            json.dumps({"sample_id": "s-001", "query": "q", "contexts": ["c"], "response": "r"}),
+            encoding="utf-8",
+        )
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "s-001"
+
+    def test_extracts_id_field_as_fallback(self, tmp_path: Path) -> None:
+        """JSONL with only 'id' field should use it as sample_id."""
+        jsonl = tmp_path / "with_id.jsonl"
+        jsonl.write_text(
+            json.dumps({"id": "entry-42", "query": "q", "contexts": ["c"], "response": "r"}),
+            encoding="utf-8",
+        )
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "entry-42"
+
+    def test_case_id_takes_priority_over_sample_id(self, tmp_path: Path) -> None:
+        """When both case_id and sample_id exist, case_id wins."""
+        jsonl = tmp_path / "both_ids.jsonl"
+        jsonl.write_text(
+            json.dumps({"case_id": "from-case", "sample_id": "from-sample", "query": "q", "contexts": ["c"], "response": "r"}),
+            encoding="utf-8",
+        )
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "from-case"
+
+    def test_sequential_fallback_when_no_id_field(self, tmp_path: Path) -> None:
+        """JSONL with no ID fields should get sequential sample-NNN IDs."""
+        jsonl = tmp_path / "no_ids.jsonl"
+        lines = [
+            json.dumps({"query": "q1", "contexts": ["c"], "response": "r1"}),
+            json.dumps({"query": "q2", "contexts": ["c"], "response": "r2"}),
+        ]
+        jsonl.write_text("\n".join(lines), encoding="utf-8")
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "sample-001"
+        assert samples[1].sample_id == "sample-002"
+
 
 class TestLoadGoldenSet:
     def test_loads_golden_set(self, tmp_path: Path) -> None:

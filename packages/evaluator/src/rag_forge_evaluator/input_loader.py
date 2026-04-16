@@ -37,6 +37,13 @@ class InputLoader:
                 logger.warning("Skipping line %d: missing required fields", line_num)
                 continue
 
+            sample_id = (
+                data.get("case_id")
+                or data.get("sample_id")
+                or data.get("id")
+                or f"sample-{line_num:03d}"
+            )
+
             samples.append(
                 EvaluationSample(
                     query=data["query"],
@@ -44,6 +51,7 @@ class InputLoader:
                     response=data["response"],
                     expected_answer=data.get("expected_answer"),
                     chunk_ids=data.get("chunk_ids"),
+                    sample_id=sample_id,
                 )
             )
         return samples

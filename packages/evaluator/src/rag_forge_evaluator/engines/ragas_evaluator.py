@@ -40,33 +40,79 @@ _DEFAULT_THRESHOLDS = {
 
 
 def _extract_ragas_score(result: object, name: str) -> float:
-    """Extract a metric score from a ragas result object.
+    """Extract an aggregate metric score from a ragas result object.
 
-    Raises ValueError if the score cannot be extracted — the caller
-    decides whether to record a SkipRecord or re-raise. No silent 0.0
+    Tries extraction strategies in order of RAGAS version likelihood:
+
+    1. ``.scores`` list (RAGAS 0.4.x) — per-sample ``MetricResult``
+       objects whose float score lives at ``.value``.
+    2. ``.to_pandas()`` (RAGAS 0.4.x fallback) — DataFrame with metric
+       names as columns and float values as cells.
+    3. ``.get()`` (RAGAS 0.2.x) — dict-like access.
+    4. ``[]`` indexing (generic).
+    5. ``getattr`` (generic).
+
+    Raises ``ValueError`` if all strategies fail — the caller decides
+    whether to record a ``SkipRecord`` or re-raise.  No silent 0.0
     fallback (that was the bug surfaced by Cycle 2).
-
-    ragas 0.2.x returns a dict-like result supporting ``.get()``.
-    ragas 0.4.x returns an ``EvaluationResult`` dataclass; ``__getitem__``
-    works on it but ``.get()`` does not.
-    ragas 0.3.x sits between the two with intermediate forms.
     """
+    # --- Strategy 1: RAGAS 0.4.x .scores attribute ---
+    # result.scores is a list[dict[str, MetricResult | float]], one dict
+    # per sample. MetricResult wraps the float at .value.
+    scores_attr = getattr(result, "scores", None)
+    if isinstance(scores_attr, list) and scores_attr:
+        values: list[float] = []
+        for entry in scores_attr:
+            if isinstance(entry, dict) and name in entry:
+                raw = entry[name]
+                val = getattr(raw, "value", None)
+                if val is not None:
+                    try:
+                        values.append(float(val))
+                    except (TypeError, ValueError):
+                        pass
+                else:
+                    try:
+                        values.append(float(raw))
+                    except (TypeError, ValueError):
+                        pass
+        if values:
+            return sum(values) / len(values)
+
+    # --- Strategy 2: RAGAS 0.4.x .to_pandas() fallback ---
+    to_pandas = getattr(result, "to_pandas", None)
+    if callable(to_pandas):
+        try:
+            df = to_pandas()
+            if name in df.columns:
+                col = df[name].dropna()
+                if len(col) > 0:
+                    return float(col.mean())
+        except Exception:  # noqa: BLE001 — defensive fallback
+            pass
+
+    # --- Strategy 3: RAGAS 0.2.x dict-like .get() ---
     if hasattr(result, "get"):
         try:
-            value = result.get(name, None)
+            value = result.get(name, None)  # type: ignore[union-attr]
             if value is not None:
                 return float(value)
         except (TypeError, ValueError):
             pass
+
+    # --- Strategy 4: generic __getitem__ ---
     try:
         return float(result[name])  # type: ignore[index]
     except (KeyError, TypeError, ValueError, IndexError):
         pass
+
+    # --- Strategy 5: generic attribute access ---
     if hasattr(result, name):
         try:
             return float(getattr(result, name))
         except (TypeError, ValueError):
             pass
+
     raise ValueError(f"could not extract ragas score for metric {name!r}")
 
 

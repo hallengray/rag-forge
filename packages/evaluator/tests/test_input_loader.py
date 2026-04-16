@@ -103,6 +103,22 @@ class TestLoadJsonl:
         assert samples[0].sample_id == "sample-001"
         assert samples[1].sample_id == "sample-002"
 
+    def test_empty_string_case_id_falls_through(self, tmp_path: Path) -> None:
+        """Empty-string case_id should fall through to next candidate."""
+        jsonl = tmp_path / "empty_case_id.jsonl"
+        jsonl.write_text(
+            json.dumps({
+                "case_id": "",
+                "sample_id": "real-id",
+                "query": "q",
+                "contexts": ["c"],
+                "response": "r",
+            }),
+            encoding="utf-8",
+        )
+        samples = InputLoader.load_jsonl(jsonl)
+        assert samples[0].sample_id == "real-id"
+
 
 class TestLoadGoldenSet:
     def test_loads_golden_set(self, tmp_path: Path) -> None:

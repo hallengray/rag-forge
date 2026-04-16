@@ -11,6 +11,7 @@ coerced to 0.0 — this makes broken infrastructure visible in the report.
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from rag_forge_evaluator.engine import (
@@ -67,15 +68,11 @@ def _extract_ragas_score(result: object, name: str) -> float:
                 raw = entry[name]
                 val = getattr(raw, "value", None)
                 if val is not None:
-                    try:
+                    with contextlib.suppress(TypeError, ValueError):
                         values.append(float(val))
-                    except (TypeError, ValueError):
-                        pass
                 else:
-                    try:
+                    with contextlib.suppress(TypeError, ValueError):
                         values.append(float(raw))
-                    except (TypeError, ValueError):
-                        pass
         if values:
             return sum(values) / len(values)
 
@@ -88,13 +85,13 @@ def _extract_ragas_score(result: object, name: str) -> float:
                 col = df[name].dropna()
                 if len(col) > 0:
                     return float(col.mean())
-        except Exception:  # noqa: BLE001 — defensive fallback
+        except Exception:
             pass
 
     # --- Strategy 3: RAGAS 0.2.x dict-like .get() ---
     if hasattr(result, "get"):
         try:
-            value = result.get(name, None)  # type: ignore[union-attr]
+            value = result.get(name, None)
             if value is not None:
                 return float(value)
         except (TypeError, ValueError):

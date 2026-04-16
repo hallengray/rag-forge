@@ -1,6 +1,6 @@
 {
   "name": "@rag-forge/mcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "MCP server exposing RAG-Forge pipeline operations as agent-callable tools",
   "author": "Femi Adedayo",
   "repository": {

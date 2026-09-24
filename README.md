@@ -129,7 +129,7 @@ There are great tools in this space. Here's an honest look at where each fits.
 
 **Peer strengths worth knowing:**
 
-- **RAGAS** has deeper metric research and a large community. RAG-Forge's evaluator supports RAGAS as a backend — run `rag-forge audit --evaluator ragas` to use it directly.
+- **RAGAS** has deeper metric research and a large community. RAG-Forge's evaluator supports RAGAS as a backend — install the optional extra (`pip install 'rag-forge-evaluator[ragas]'`) and run `rag-forge audit --evaluator ragas` to use it directly.
 - **LangChain Eval** has the broadest ecosystem of integrations if you're already invested in LangChain.
 - **Giskard** has a strong general-purpose ML testing story beyond RAG.
 
